@@ -3,13 +3,14 @@
 Ein KI-Assistent für die Familie, der Geschenkwünsche sammelt und doppelte Geschenke verhindert.
 Familienmitglieder schreiben ihm im Web-Chat, was sie sich wünschen („Ich wünsche mir …“),
 fragen nach den Wünschen anderer („Was wünscht sich Mama?“) und reservieren Geschenke
-(„Ich besorge Papa die Pfanne“) – reservierte Geschenke sehen die anderen nicht mehr.
+(„Ich besorge Papa die Pfanne“) – die anderen sehen dann „besorgt Mama“ und können es nicht mehr auswählen.
 
 ## Funktionen
 
 - **Chat** mit einem Sprachmodell über [OpenRouter](https://openrouter.ai) (Tool-Calling, Streaming, Ausweichmodelle bei Überlastung)
 - **Wunschlisten** mit Shop, Link und Preis; eintragen, ändern, entfernen – auch für Personen ohne eigenen Zugang
-- **Reservierungen**: doppelte Reservierung ausgeschlossen, auch bei gleichzeitigen Anfragen
+- **Reservierungen**: doppelte Reservierung ausgeschlossen, auch bei gleichzeitigen Anfragen;
+  in den Listen anderer steht, wer was besorgt
 - **Überraschungsschutz**: Wer sich etwas wünscht, erfährt nie, ob es schon jemand besorgt
 - **Benachrichtigung per Mail**, wenn ein bereits reservierter Wunsch entfernt wird
 - **Einladungen per Mail**: Name und Adresse legt der Einladende fest, ein Klick auf den Link genügt

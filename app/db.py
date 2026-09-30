@@ -394,11 +394,25 @@ def add_wish(conn, actor_id: int, person_name: str, title: str, description=None
     return {"id": cur.lastrowid, "fuer": person["name"], "titel": title.strip()}
 
 
+def shop_markdown(shop: str | None, url: str | None) -> str | None:
+    """Shop als fertiger Markdown-Link zur Anzeige: [Manufactum](https://…) – spart eine Link-Spalte.
+
+    Ohne Shop-Namen heißt der Link „Zum Shop“; ohne Link bleibt es der reine Name.
+    """
+    if url and url.startswith(("http://", "https://")):
+        text = (shop or "Zum Shop").replace("[", "(").replace("]", ")")
+        return f"[{text}]({url.replace(' ', '%20').replace(')', '%29')})"
+    return shop
+
+
 def _public(w, **extra) -> dict:
     d = {"id": w["id"], "titel": w["title"]}
     for key, col in (("beschreibung", "description"), ("shop", "shop"), ("link", "url"), ("preis", "price")):
         if w[col]:
             d[key] = w[col]
+    if anzeige := shop_markdown(w["shop"], w["url"]):
+        d["shop_anzeige"] = anzeige
+        d.pop("link", None)          # steckt schon im Link – sonst baut das Modell gern eine Link-Spalte
     d.update(extra)
     return d
 
@@ -408,25 +422,28 @@ def list_wishes(conn, actor_id: int, person_name: str) -> dict:
 
     - Fragt die Person nach ihren eigenen Wünschen, sieht sie ALLE, ohne jeden Hinweis
       auf Reservierungen (Überraschungsschutz).
-    - Andere sehen nur noch nicht reservierte Wünsche plus die, die sie selbst reserviert haben.
-      Von wem etwas reserviert wurde, erfahren sie nie.
+    - Andere sehen alle Wünsche mit Status: „offen“, „von dir reserviert“ oder „besorgt <Name>“.
+      Von anderen reservierte Wünsche stehen am Ende und lassen sich nicht reservieren.
     """
     person = find_person(conn, person_name)
     rows = conn.execute(
-        "SELECT * FROM wishes WHERE person_id = ? AND deleted_at IS NULL ORDER BY created_at",
+        """SELECT w.*, r.name AS reserved_name FROM wishes w LEFT JOIN persons r ON r.id = w.reserved_by
+           WHERE w.person_id = ? AND w.deleted_at IS NULL ORDER BY w.created_at""",
         (person["id"],),
     ).fetchall()
 
     if person["id"] == actor_id:
         return {"person": person["name"], "eigene_liste": True, "wuensche": [_public(w) for w in rows]}
 
-    visible = []
+    visible, taken = [], []
     for w in rows:
         if w["reserved_by"] is None:
             visible.append(_public(w, status="offen"))
         elif w["reserved_by"] == actor_id:
             visible.append(_public(w, status="von dir reserviert"))
-    return {"person": person["name"], "eigene_liste": False, "wuensche": visible}
+        else:
+            taken.append(_public(w, status=f"besorgt {w['reserved_name']}", besorgt_von=w["reserved_name"]))
+    return {"person": person["name"], "eigene_liste": False, "wuensche": visible + taken}
 
 
 def reserve(conn, actor_id: int, wish_id: int) -> dict:
@@ -444,7 +461,9 @@ def reserve(conn, actor_id: int, wish_id: int) -> dict:
             (actor_id, int(time.time()), wish_id),
         )
         if cur.rowcount == 0:
-            raise WishError("Das besorgt schon jemand anderes.")
+            by = conn.execute("SELECT p.name FROM wishes w JOIN persons p ON p.id = w.reserved_by "
+                              "WHERE w.id = ?", (wish_id,)).fetchone()
+            raise WishError(f"Das besorgt schon {by['name']}." if by else "Das besorgt schon jemand anderes.")
     return _public(_wish(conn, wish_id), status="von dir reserviert")
 
 
