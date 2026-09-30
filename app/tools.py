@@ -42,13 +42,13 @@ TOOLS = [
     ),
     _tool(
         "wuensche_anzeigen",
-        "Zeigt die Wunschliste einer Person. Bereits von anderen besorgte Geschenke sind ausgeblendet.",
+        "Zeigt die Wunschliste einer Person mit Status (offen / von dir reserviert / besorgt <Name>).",
         {"person": {"type": "string", "description": "Name der Person"}},
         required=("person",),
     ),
     _tool(
         "reservieren",
-        "Markiert, dass die anfragende Person dieses Geschenk besorgt. Danach sehen andere es nicht mehr.",
+        "Markiert, dass die anfragende Person dieses Geschenk besorgt. Andere sehen es dann als „besorgt <Name>“ und können es nicht mehr reservieren.",
         {"wunsch_id": {"type": "integer"}},
         required=("wunsch_id",),
     ),

@@ -44,22 +44,23 @@ def test_wunsch_eintragen_und_anzeigen(conn):
                                     "link": "https://example.com/pfanne", "preis": "69 €", "status": "offen"}
 
 
-def test_reserviertes_ist_fuer_andere_unsichtbar(conn):
+def test_reserviertes_sehen_andere_mit_namen(conn):
     w = call(conn, "Papa", "wunsch_hinzufuegen", person="Papa", titel="Pfanne")["id"]
     call(conn, "Papa", "wunsch_hinzufuegen", person="Papa", titel="Buch")
     assert call(conn, "Mama", "reservieren", wunsch_id=w)["status"] == "von dir reserviert"
 
-    # Mama sieht ihre Reservierung, Lena sieht die Pfanne gar nicht mehr
+    # Mama sieht ihre Reservierung, Lena sieht die Pfanne als „besorgt Mama“ – am Ende der Liste
     assert call(conn, "Mama", "wuensche_anzeigen", person="Papa")["wuensche"][0]["status"] == "von dir reserviert"
-    assert titles(call(conn, "Lena", "wuensche_anzeigen", person="Papa")) == ["Buch"]
+    lena = call(conn, "Lena", "wuensche_anzeigen", person="Papa")["wuensche"]
+    assert [(w["titel"], w["status"]) for w in lena] == [("Buch", "offen"), ("Pfanne", "besorgt Mama")]
+    assert lena[1]["besorgt_von"] == "Mama"
 
 
 def test_doppelte_reservierung_wird_verhindert(conn):
     w = call(conn, "Papa", "wunsch_hinzufuegen", person="Papa", titel="Pfanne")["id"]
     call(conn, "Mama", "reservieren", wunsch_id=w)
     r = call(conn, "Lena", "reservieren", wunsch_id=w)
-    assert "fehler" in r and "jemand anderes" in r["fehler"]
-    assert "Mama" not in json.dumps(r)                     # verrät nicht, WER es besorgt
+    assert r == {"fehler": "Das besorgt schon Mama."}
 
 
 def test_ueberraschungsschutz(conn):
@@ -68,7 +69,8 @@ def test_ueberraschungsschutz(conn):
 
     eigene = call(conn, "Papa", "wuensche_anzeigen", person="Papa")
     assert titles(eigene) == ["Pfanne"]
-    assert "status" not in json.dumps(eigene) and "reserv" not in json.dumps(eigene)
+    dump = json.dumps(eigene)
+    assert "status" not in dump and "reserv" not in dump and "besorgt" not in dump and "Mama" not in dump
 
     # Auch über Umwege nichts verraten: eigenen Wunsch reservieren liefert immer dieselbe Meldung
     r = call(conn, "Papa", "reservieren", wunsch_id=w)
@@ -81,7 +83,7 @@ def test_reservierung_aufheben(conn):
     call(conn, "Mama", "reservieren", wunsch_id=w)
     assert "fehler" in call(conn, "Lena", "reservierung_aufheben", wunsch_id=w)   # nur wer reserviert hat
     assert call(conn, "Mama", "reservierung_aufheben", wunsch_id=w)["status"] == "offen"
-    assert titles(call(conn, "Lena", "wuensche_anzeigen", person="Papa")) == ["Pfanne"]
+    assert call(conn, "Lena", "wuensche_anzeigen", person="Papa")["wuensche"][0]["status"] == "offen"
 
 
 def test_wuensche_fuer_personen_ohne_login(conn):
