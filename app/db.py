@@ -394,11 +394,25 @@ def add_wish(conn, actor_id: int, person_name: str, title: str, description=None
     return {"id": cur.lastrowid, "fuer": person["name"], "titel": title.strip()}
 
 
+def shop_markdown(shop: str | None, url: str | None) -> str | None:
+    """Shop als fertiger Markdown-Link zur Anzeige: [Manufactum](https://…) – spart eine Link-Spalte.
+
+    Ohne Shop-Namen heißt der Link „Zum Shop“; ohne Link bleibt es der reine Name.
+    """
+    if url and url.startswith(("http://", "https://")):
+        text = (shop or "Zum Shop").replace("[", "(").replace("]", ")")
+        return f"[{text}]({url.replace(' ', '%20').replace(')', '%29')})"
+    return shop
+
+
 def _public(w, **extra) -> dict:
     d = {"id": w["id"], "titel": w["title"]}
     for key, col in (("beschreibung", "description"), ("shop", "shop"), ("link", "url"), ("preis", "price")):
         if w[col]:
             d[key] = w[col]
+    if anzeige := shop_markdown(w["shop"], w["url"]):
+        d["shop_anzeige"] = anzeige
+        d.pop("link", None)          # steckt schon im Link – sonst baut das Modell gern eine Link-Spalte
     d.update(extra)
     return d
 

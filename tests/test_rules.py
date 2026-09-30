@@ -41,7 +41,8 @@ def test_wunsch_eintragen_und_anzeigen(conn):
     assert r["fuer"] == "Papa"
     liste = call(conn, "Mama", "wuensche_anzeigen", person="papa")   # Groß/klein egal
     assert liste["wuensche"][0] == {"id": r["id"], "titel": "Gusseisenpfanne", "shop": "Manufactum",
-                                    "link": "https://example.com/pfanne", "preis": "69 €", "status": "offen"}
+                                    "shop_anzeige": "[Manufactum](https://example.com/pfanne)",
+                                    "preis": "69 €", "status": "offen"}
 
 
 def test_reserviertes_sehen_andere_mit_namen(conn):
@@ -335,3 +336,12 @@ def test_annehmen_wenn_mail_inzwischen_vergeben(conn):
     conn.execute("UPDATE persons SET email = 'gisela@example.de' WHERE name = 'Oma'")   # Sonderfall
     with pytest.raises(db.WishError, match="inzwischen von jemand anderem"):
         db.accept_invite(conn, token)
+
+
+def test_shop_als_link():
+    assert db.shop_markdown("Manufactum", "https://example.com/p") == "[Manufactum](https://example.com/p)"
+    assert db.shop_markdown(None, "https://example.com/p") == "[Zum Shop](https://example.com/p)"
+    assert db.shop_markdown("Thalia", None) == "Thalia"
+    assert db.shop_markdown(None, None) is None
+    assert db.shop_markdown("Laden", "javascript:alert(1)") == "Laden"          # nur http(s)-Links
+    assert db.shop_markdown("A [B]", "https://x.de/a b(c)") == "[A (B)](https://x.de/a%20b(c%29)"
