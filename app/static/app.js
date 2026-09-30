@@ -14,6 +14,14 @@ const TABLE_ROW = /^\s*\|.*\|\s*$/;
 const TABLE_SEP = /^\s*\|?(\s*:?-{2,}:?\s*\|)+\s*(:?-{2,}:?\s*)?\|?\s*$/;
 const cells = (row) => row.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
 
+// Status-Spalte als farbiges Etikett: offen / von dir reserviert / besorgt <Name>
+function statusBadge(label, cell) {
+  if (!/^status$/i.test(label.replace(/<[^>]*>/g, "").trim()) || !cell) return cell;
+  const t = cell.replace(/<[^>]*>/g, "").toLowerCase();
+  const kind = t.startsWith("offen") ? "open" : t.includes("von dir") ? "mine" : t.startsWith("besorgt") ? "taken" : "";
+  return kind ? `<span class="status status-${kind}">${cell}</span>` : cell;
+}
+
 function render(text) {
   const esc = text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   let html = esc
@@ -27,12 +35,20 @@ function render(text) {
     // Tabelle: Kopfzeile + Trennzeile (|---|---|) + Datenzeilen
     if (TABLE_ROW.test(line) && TABLE_SEP.test(lines[i + 1] || "")) {
       if (inList) { out.push("</ul>"); inList = false; }
-      const head = cells(line).map((c) => `<th>${c}</th>`).join("");
+      const heads = cells(line);
       const body = [];
       for (i += 2; i < lines.length && TABLE_ROW.test(lines[i]); i++) {
-        body.push("<tr>" + cells(lines[i]).map((c) => `<td>${c}</td>`).join("") + "</tr>");
+        const tds = cells(lines[i]).map((c, k) => {
+          const label = heads[k] || "";
+          const empty = c === "" || c === "–" || c === "-";
+          const cls = [k === 0 ? "cell-title" : "", empty ? "cell-empty" : ""].filter(Boolean).join(" ");
+          // data-label: Spaltenname für die Karten-Ansicht auf dem Handy
+          return `<td data-label="${label.replace(/<[^>]*>/g, "")}"${cls ? ` class="${cls}"` : ""}>${statusBadge(label, c)}</td>`;
+        });
+        body.push("<tr>" + tds.join("") + "</tr>");
       }
       i--;
+      const head = heads.map((h) => `<th>${h}</th>`).join("");
       out.push(`<div class="table-wrap"><table><thead><tr>${head}</tr></thead><tbody>${body.join("")}</tbody></table></div>`);
       continue;
     }
@@ -42,7 +58,9 @@ function render(text) {
     out.push(line + "<br>");
   }
   if (inList) out.push("</ul>");
-  return out.join("").replace(/(<br>)+$/, "").replace(/<br>(<div class="table-wrap">)/g, "$1");
+  return out.join("").replace(/(<br>)+$/, "")
+    .replace(/<br>(<div class="table-wrap">)/g, "$1")     // keine Leerzeile vor …
+    .replace(/(<\/table><\/div>)<br>/g, "$1");            // … und nach Tabellen
 }
 
 function addMessage(role, text = "") {
