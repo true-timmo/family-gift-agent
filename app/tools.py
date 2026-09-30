@@ -74,7 +74,8 @@ TOOLS = [
 ]
 
 
-def execute(conn, actor_id: int, name: str, raw_args: str, outbox: list | None = None) -> dict:
+def execute(conn, actor_id: int, name: str, raw_args: str, outbox: list | None = None,
+            admin: bool = False) -> dict:
     """Führt ein Tool aus und gibt immer ein JSON-fähiges Ergebnis zurück – auch bei Fehlern.
 
     Benachrichtigungen (z.B. Mails) werden in `outbox` gesammelt statt an das Modell zurückgegeben.
@@ -104,9 +105,9 @@ def execute(conn, actor_id: int, name: str, raw_args: str, outbox: list | None =
                 return {"reservierungen": db.my_reservations(conn, actor_id)}
             case "wunsch_bearbeiten":
                 wid = int(args.pop("wunsch_id"))
-                return db.update_wish(conn, actor_id, wid, **args)
+                return db.update_wish(conn, actor_id, wid, admin=admin, **args)
             case "wunsch_entfernen":
-                return db.delete_wish(conn, actor_id, int(args["wunsch_id"]), outbox)
+                return db.delete_wish(conn, actor_id, int(args["wunsch_id"]), outbox, admin=admin)
             case _:
                 return {"fehler": f"Unbekanntes Tool '{name}'."}
     except db.WishError as e:

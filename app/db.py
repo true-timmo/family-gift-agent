@@ -489,23 +489,25 @@ def my_reservations(conn, actor_id: int) -> list[dict]:
     ]
 
 
-def _check_editable(w, actor_id: int) -> None:
-    if actor_id not in (w["person_id"], w["created_by"]) or w["deleted_at"]:
+def _check_editable(w, actor_id: int, admin: bool = False) -> None:
+    if w["deleted_at"]:
+        raise WishError("Dieser Wunsch wurde schon entfernt.")
+    if not admin and actor_id not in (w["person_id"], w["created_by"]):
         raise WishError("Diesen Wunsch kannst du nicht ändern – nur die Person selbst oder wer ihn eingetragen hat.")
 
 
-def update_wish(conn, actor_id: int, wish_id: int, **fields) -> dict:
+def update_wish(conn, actor_id: int, wish_id: int, admin: bool = False, **fields) -> dict:
     cols = {"titel": "title", "beschreibung": "description", "shop": "shop", "link": "url", "preis": "price"}
     changes = {cols[k]: v for k, v in fields.items() if k in cols and v is not None}
     with transaction(conn):
-        _check_editable(_wish(conn, wish_id), actor_id)
+        _check_editable(_wish(conn, wish_id), actor_id, admin)
         if changes:
             sets = ", ".join(f"{c} = ?" for c in changes)
             conn.execute(f"UPDATE wishes SET {sets} WHERE id = ?", (*changes.values(), wish_id))
     return _public(_wish(conn, wish_id))
 
 
-def delete_wish(conn, actor_id: int, wish_id: int, outbox: list | None = None) -> dict:
+def delete_wish(conn, actor_id: int, wish_id: int, outbox: list | None = None, admin: bool = False) -> dict:
     """Entfernt einen Wunsch (Soft-Delete).
 
     War er reserviert, landet eine Benachrichtigung für die reservierende Person in `outbox`.
@@ -513,7 +515,7 @@ def delete_wish(conn, actor_id: int, wish_id: int, outbox: list | None = None) -
     """
     with transaction(conn):
         w = _wish(conn, wish_id)
-        _check_editable(w, actor_id)
+        _check_editable(w, actor_id, admin)
         # Soft-Delete: wer ihn reserviert hat, sieht in seinen Reservierungen zusätzlich einen Hinweis
         conn.execute("UPDATE wishes SET deleted_at = ? WHERE id = ?", (int(time.time()), wish_id))
     if outbox is not None and w["reserved_by"] and w["reserved_by"] != actor_id:
@@ -531,6 +533,57 @@ def delete_wish(conn, actor_id: int, wish_id: int, outbox: list | None = None) -
                 "titel": w["title"],
             })
     return {"id": wish_id, "titel": w["title"], "entfernt": True}
+
+
+# --- Admin ----------------------------------------------------------------------
+
+def is_admin(person) -> bool:
+    """Admin ist, wessen Mail-Adresse in ADMIN_EMAIL steht (Groß/klein egal)."""
+    admin = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+    return bool(admin and person and person["email"] and person["email"].strip().lower() == admin)
+
+
+def admin_person(conn):
+    admin = os.environ.get("ADMIN_EMAIL", "").strip()
+    return conn.execute("SELECT * FROM persons WHERE lower(email) = lower(?)", (admin,)).fetchone() if admin else None
+
+
+def delete_person(conn, admin_id: int, name: str, outbox: list | None = None) -> dict:
+    """Löscht eine Person endgültig (nur Admin – das prüft der Aufrufer).
+
+    - Ihre Wünsche werden gelöscht; wer davon etwas reserviert hatte, wird benachrichtigt.
+    - Ihre eigenen Reservierungen werden freigegeben (Geschenke sind wieder offen).
+    - Wünsche, die sie für andere eingetragen hat, bleiben – eingetragen gilt dann der Admin.
+    - Sessions, Chatverlauf, Codes und offene Einladungen verschwinden.
+    """
+    with transaction(conn):
+        p = find_person(conn, name)
+        if p["id"] == admin_id:
+            raise WishError("Du kannst dich nicht selbst entfernen.")
+        admin_name = conn.execute("SELECT name FROM persons WHERE id = ?", (admin_id,)).fetchone()["name"]
+        notify = conn.execute(
+            """SELECT w.title, r.name, r.email FROM wishes w JOIN persons r ON r.id = w.reserved_by
+               WHERE w.person_id = ? AND w.deleted_at IS NULL AND w.reserved_by != ?""",
+            (p["id"], p["id"])).fetchall()
+        wishes = conn.execute("SELECT COUNT(*) FROM wishes WHERE person_id = ? AND deleted_at IS NULL",
+                              (p["id"],)).fetchone()[0]
+        released = conn.execute("UPDATE wishes SET reserved_by = NULL, reserved_at = NULL "
+                                "WHERE reserved_by = ? AND person_id != ?", (p["id"], p["id"])).rowcount
+        conn.execute("DELETE FROM wishes WHERE person_id = ?", (p["id"],))
+        conn.execute("UPDATE wishes SET created_by = ? WHERE created_by = ?", (admin_id, p["id"]))
+        conn.execute("DELETE FROM invites WHERE person_id = ?", (p["id"],))
+        conn.execute("UPDATE invites SET invited_by = ? WHERE invited_by = ?", (admin_id, p["id"]))
+        for table in ("sessions", "chat_messages"):
+            conn.execute(f"DELETE FROM {table} WHERE person_id = ?", (p["id"],))
+        for table in ("otp_codes", "otp_sends"):
+            conn.execute(f"DELETE FROM {table} WHERE name = ?", (p["name"],))
+        conn.execute("DELETE FROM persons WHERE id = ?", (p["id"],))
+    if outbox is not None:
+        for n in notify:
+            if n["email"]:
+                outbox.append({"type": "wunsch_entfernt", "an": n["email"], "empfaenger": n["name"],
+                               "fuer": p["name"], "entfernt_von": admin_name, "titel": n["title"]})
+    return {"name": p["name"], "wuensche_geloescht": wishes, "reservierungen_freigegeben": released}
 
 
 # --- Chatverlauf -------------------------------------------------------------

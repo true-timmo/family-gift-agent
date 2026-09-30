@@ -235,7 +235,8 @@ async def logout(request: Request, response: Response):
 
 @app.get("/api/me")
 async def me(person=Depends(current_person)):
-    return {"name": person["name"], "verlauf": db.recent_messages(conn, person["id"], limit=50)}
+    return {"name": person["name"], "admin": db.is_admin(person),
+            "verlauf": db.recent_messages(conn, person["id"], limit=50)}
 
 
 @app.get("/api/familie")
@@ -262,6 +263,30 @@ async def einladung(data: EinladungIn, person=Depends(current_person)):
         raise HTTPException(409, str(e))
     await _send_invite(email, name, person["name"], token)
     return {"name": name, "email": email}
+
+
+# --- Admin --------------------------------------------------------------------
+
+async def current_admin(person=Depends(current_person)):
+    if not db.is_admin(person):
+        raise HTTPException(403, "Das darf nur der Admin.")
+    return person
+
+
+class PersonIn(BaseModel):
+    name: str = Field(max_length=60)
+
+
+@app.post("/api/admin/person-entfernen", dependencies=[Depends(require_json)])
+async def person_entfernen(data: PersonIn, admin=Depends(current_admin)):
+    outbox: list[dict] = []
+    try:
+        result = db.delete_person(conn, admin["id"], data.name, outbox)
+    except db.WishError as e:
+        raise HTTPException(409, str(e))
+    log.info("Admin %s hat %s entfernt", admin["name"], result["name"])
+    _notify(outbox)
+    return result
 
 
 # --- Chat --------------------------------------------------------------------

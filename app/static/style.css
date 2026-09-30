@@ -95,6 +95,7 @@ header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; bord
 #family-list li > button:first-child { flex: 1; min-width: 0; }
 #family-list .family-action { flex: none; width: auto; justify-content: center; border: 1px solid var(--accent); border-radius: 10px; background: none; color: var(--accent);
   padding: 0 10px; font-size: 13px; font-weight: 600; }
+#family-list .family-delete { border-color: var(--error); color: var(--error); }
 .invite-open { margin-top: 10px; width: 100%; padding: 9px; border: 1px dashed var(--accent); border-radius: 10px;
   background: none; color: var(--accent); font-weight: 600; }
 .invite-form { display: grid; gap: 8px; margin-top: 10px; }

@@ -55,9 +55,22 @@ So arbeitest du:
 - Einladen geht nicht im Chat, sondern oben über „Familie“ → „Jemanden einladen“ (Name + E-Mail-Adresse)."""
 
 
+ADMIN_PROMPT = """
+
+{name} ist Admin der Familienliste und darf die Wünsche ALLER Personen bearbeiten und entfernen
+(z.B. einen vergessenen Link ergänzen oder einen doppelten Wunsch löschen) – nutze dafür wunsch_bearbeiten
+und wunsch_entfernen mit der Wunsch-Nummer aus wuensche_anzeigen. Frag vor dem Entfernen kurz nach,
+wenn nicht eindeutig ist, welcher Wunsch gemeint ist.
+Personen löschen geht NICHT im Chat, sondern nur oben über „Familie“ → „Entfernen“.
+Auch für den Admin gilt: Verrate nie, ob jemand einen Wunsch von {name} bereits besorgt."""
+
+
 def _system_prompt(conn, person) -> str:
     persons = ", ".join(p["name"] for p in db.list_persons(conn))
-    return SYSTEM_PROMPT.format(name=person["name"], today=date.today().strftime("%d.%m.%Y"), persons=persons)
+    prompt = SYSTEM_PROMPT.format(name=person["name"], today=date.today().strftime("%d.%m.%Y"), persons=persons)
+    if db.is_admin(person):
+        prompt += ADMIN_PROMPT.format(name=person["name"])
+    return prompt
 
 
 async def chat(conn, person, user_text: str) -> AsyncIterator[dict]:
@@ -115,7 +128,7 @@ async def chat(conn, person, user_text: str) -> AsyncIterator[dict]:
         })
         for c in calls.values():
             outbox: list[dict] = []
-            result = execute(conn, person["id"], c["name"], c["arguments"], outbox)
+            result = execute(conn, person["id"], c["name"], c["arguments"], outbox, admin=db.is_admin(person))
             if outbox:   # Mails im Hintergrund – die Antwort im Chat wartet nicht darauf
                 task = asyncio.create_task(mailer.send_notifications(outbox, log))
                 _background.add(task)
