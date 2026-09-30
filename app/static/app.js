@@ -81,7 +81,7 @@ async function showChat() {
 let loginName = "";
 function step(id) {
   document.querySelectorAll(".step").forEach((f) => (f.hidden = f.id !== id));
-  $("#login-back").hidden = id === "step-name";
+  $("#login-back").hidden = id === "step-name" || id === "step-invite";
   $(`#${id} input`)?.focus();
 }
 async function loginCall(path, body) {
@@ -99,6 +99,11 @@ function handleStep(data) {
   if (!data) return;
   if (data.step === "register") { loginName = data.name; $("#step-register .name").textContent = data.name; step("step-register"); }
   else if (data.step === "code") { $("#step-code .email").textContent = data.email; step("step-code"); }
+  else if (data.step === "invited") {
+    loginName = data.name;
+    $("#step-invited .name").textContent = data.name; $("#step-invited .email").textContent = data.email;
+    step("step-invited");
+  }
 }
 $("#step-name").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -123,6 +128,29 @@ $("#step-code .resend").addEventListener("click", async () => {
   else handleStep(await loginCall("/api/login/start", { name: loginName }));
   if (!$("#login-error").textContent) $("#login-error").textContent = "Neuer Code ist unterwegs.";
 });
+$("#step-invited").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const data = await loginCall("/api/login/invite/resend", { name: loginName });
+  if (data) $("#login-error").textContent = `Die Einladung ist unterwegs an ${data.email}. Schau in dein Postfach.`;
+});
+
+// --- Einladungslink (?einladung=…): erst anzeigen, per Knopfdruck annehmen ---
+let inviteToken = new URLSearchParams(location.search).get("einladung");
+async function showInvite() {
+  $("#chat-view").hidden = true; $("#login-view").hidden = false;
+  const data = await loginCall("/api/login/invite", { token: inviteToken });
+  history.replaceState(null, "", "/");            // Link nicht in Verlauf/Lesezeichen behalten
+  if (!data) { inviteToken = null; step("step-name"); return; }
+  $("#step-invite .name").textContent = data.name;
+  $("#step-invite .inviter").textContent = data.eingeladen_von;
+  step("step-invite");
+}
+$("#step-invite").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const data = await loginCall("/api/login/invite/accept", { token: inviteToken });
+  if (data) { inviteToken = null; step("step-name"); showChat(); }
+});
+
 $("#login-back").addEventListener("click", () => { $("#login-error").textContent = ""; step("step-name"); });
 
 // --- Hilfe-Fenster ---
@@ -138,27 +166,71 @@ document.querySelectorAll("dialog.help").forEach((d) => {
   });
 });
 
-// --- Familie: wer ist registriert? ---
-$("#family-btn").addEventListener("click", async () => {
-  const panel = $("#family"), btn = $("#family-btn");
-  if (!panel.hidden) { panel.hidden = true; btn.setAttribute("aria-expanded", "false"); return; }
+// --- Familie: wer ist dabei? Einladen per Mail ---
+const STATUS = { registriert: ["yes", "registriert"], eingeladen: ["wait", "eingeladen"], offen: ["no", "noch nicht dabei"] };
+
+function closeFamily() { $("#family").hidden = true; $("#family-btn").setAttribute("aria-expanded", "false"); }
+
+// Mit Name = vorhandene Person aus der Liste (Name fest), ohne = neue Person
+function openInviteForm(name = "") {
+  const f = $("#invite-form");
+  f.hidden = false; $("#invite-open").hidden = true;
+  f.name.value = name; f.name.readOnly = !!name; f.dataset.bestehend = name ? "1" : "";
+  f.email.value = ""; $("#invite-msg").textContent = "";
+  (name ? f.email : f.name).focus();
+}
+
+async function loadFamily() {
   const res = await api("/api/familie");
   const list = $("#family-list"); list.replaceChildren();
   for (const p of await res.json()) {
     const li = document.createElement("li"), b = document.createElement("button");
     const name = document.createElement("span"), badge = document.createElement("span");
+    const [cls, label] = STATUS[p.status];
     name.textContent = p.du ? `${p.name} (du)` : p.name;
-    badge.className = `badge ${p.registriert ? "yes" : "no"}`;
-    badge.textContent = p.registriert ? "registriert" : "noch nicht registriert";
+    badge.className = `badge ${cls}`; badge.textContent = label;
     b.append(name, badge);
     b.addEventListener("click", () => {
-      panel.hidden = true; btn.setAttribute("aria-expanded", "false");
+      closeFamily();
       input.value = p.du ? "Zeig mir meine Wunschliste als Tabelle" : `Zeig mir die Wünsche von ${p.name} als Tabelle`;
       input.focus();
     });
-    li.append(b); list.append(li);
+    li.append(b);
+    if (p.status !== "registriert") {   // offen: einladen / eingeladen: nochmal (z.B. andere Adresse)
+      const act = document.createElement("button");
+      act.className = "family-action"; act.type = "button";
+      act.textContent = p.status === "eingeladen" ? "Erneut" : "Einladen";
+      act.title = p.status === "eingeladen" ? "Einladung nochmal senden (auch an eine andere Adresse)" : "Per E-Mail einladen";
+      act.addEventListener("click", () => openInviteForm(p.name));
+      li.append(act);
+    }
+    list.append(li);
   }
-  panel.hidden = false; btn.setAttribute("aria-expanded", "true");
+}
+
+$("#family-btn").addEventListener("click", async () => {
+  const panel = $("#family");
+  if (!panel.hidden) return closeFamily();
+  $("#invite-form").hidden = true; $("#invite-open").hidden = false;
+  await loadFamily();
+  panel.hidden = false; $("#family-btn").setAttribute("aria-expanded", "true");
+});
+$("#invite-open").addEventListener("click", () => openInviteForm());
+$("#invite-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.target, msg = $("#invite-msg"), btn = f.querySelector("button");
+  btn.disabled = true; msg.className = "invite-msg"; msg.textContent = "Wird gesendet …";
+  try {
+    const res = await api("/api/einladung", { name: f.name.value.trim(), email: f.email.value.trim(),
+                                              bestehend: !!f.dataset.bestehend });
+    const data = await res.json();
+    if (!res.ok) { msg.className = "invite-msg err"; msg.textContent = data.detail || "Das hat nicht geklappt."; return; }
+    msg.className = "invite-msg ok";
+    msg.textContent = `Einladung an ${data.name} (${data.email}) ist unterwegs.`;
+    f.name.value = ""; f.email.value = ""; f.name.readOnly = false; f.dataset.bestehend = "";
+    await loadFamily();
+  } catch { msg.className = "invite-msg err"; msg.textContent = "Keine Verbindung zum Server."; }
+  finally { btn.disabled = false; }
 });
 
 $("#logout-btn").addEventListener("click", async () => { await api("/api/logout", {}); showLogin(); });
@@ -215,4 +287,4 @@ $("#chat-form").addEventListener("submit", async (e) => {
   $("#send").disabled = false; input.focus();
 });
 
-showChat().catch(() => showLogin());
+if (inviteToken) showInvite(); else showChat().catch(() => showLogin());

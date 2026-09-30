@@ -1,4 +1,5 @@
 """Web-Server: Login, Chat (Server-Sent Events) und die statische Oberfläche."""
+import asyncio
 import hmac
 import json
 import logging
@@ -42,6 +43,10 @@ async def require_json(request: Request) -> None:
 #                                         → sonst: Registrierung nötig
 #  2. /api/login/register  Name + Mail + Familien-Code → Code wird an die neue Mail verschickt
 #  3. /api/login/verify    Name + Code → angemeldet (bei Registrierung: Konto wird jetzt angelegt)
+#
+#  Einladung per Mail (empfohlen): Eingeloggte laden mit Name + Mail ein (/api/einladung).
+#  Der Link aus der Mail (?einladung=…) beweist die Mail-Adresse – /api/login/invite/accept
+#  meldet direkt an, ohne Code. Der Familien-Code ist nur noch ein optionaler Ausweg.
 
 FAMILY_CODE = os.environ.get("FAMILY_CODE", "").strip()
 NAME_RE = re.compile(r"^[^\W\d_](?:[\w .'-]{0,28}[^\W_])?$")
@@ -49,6 +54,15 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 log = logging.getLogger("uvicorn.error")
 
 _failed: dict[str, list[float]] = defaultdict(list)
+_background: set[asyncio.Task] = set()
+
+
+def _notify(outbox: list[dict]) -> None:
+    """Benachrichtigungen im Hintergrund verschicken – die Antwort wartet nicht darauf."""
+    if outbox:
+        task = asyncio.create_task(mailer.send_notifications(outbox, log))
+        _background.add(task)
+        task.add_done_callback(_background.discard)
 
 
 def _check_ip(request: Request) -> str:
@@ -94,6 +108,10 @@ class RegisterIn(StartIn):
     family_code: str = Field(max_length=100)
 
 
+class InviteIn(BaseModel):
+    token: str = Field(max_length=100)
+
+
 class VerifyIn(StartIn):
     code: str = Field(max_length=10)
 
@@ -105,6 +123,8 @@ async def login_start(data: StartIn, request: Request):
     person = db.get_person(conn, name)
     if person and person["email"]:
         return await _send_code(person["name"], person["email"], register=False)
+    if inv := db.pending_invite(conn, name):
+        return {"step": "invited", "name": inv["name"], "email": _mask(inv["email"])}
     return {"step": "register", "name": person["name"] if person else name}
 
 
@@ -113,7 +133,7 @@ async def login_register(data: RegisterIn, request: Request):
     ip = _check_ip(request)
     name, email = _clean_name(data.name), data.email.strip()
     if not FAMILY_CODE:
-        raise HTTPException(403, "Die Registrierung ist gerade nicht möglich.")
+        raise HTTPException(403, "Neu dabei? Dann bitte jemanden aus der Familie, dich einzuladen.")
     if not hmac.compare_digest(data.family_code.strip().lower().encode(), FAMILY_CODE.lower().encode()):
         _failed[ip].append(time.time())
         raise HTTPException(403, "Der Familien-Code stimmt nicht.")
@@ -122,17 +142,83 @@ async def login_register(data: RegisterIn, request: Request):
     person = db.get_person(conn, name)
     if person and person["email"]:
         raise HTTPException(409, "Diesen Namen gibt es schon. Bitte zurück und nur den Namen eingeben.")
+    if db.email_owner(conn, email, person["id"] if person else None):
+        raise HTTPException(409, "Diese E-Mail-Adresse wird schon verwendet.")   # bewusst ohne Namen (öffentlich)
     return await _send_code(person["name"] if person else name, email, register=True)
+
+
+# --- Einladungen ---------------------------------------------------------------
+
+def _invite_link(token: str) -> str:
+    return f"{mailer.APP_URL}/?einladung={token}"
+
+
+async def _send_invite(email: str, name: str, inviter: str, token: str) -> None:
+    try:
+        await mailer.send_invite(email, name, inviter, _invite_link(token), db.INVITE_DAYS)
+    except Exception:
+        log.exception("Einladung an %s konnte nicht verschickt werden", _mask(email))
+        raise HTTPException(502, "Die Einladung konnte nicht verschickt werden. Bitte später nochmal versuchen.")
+
+
+class TokenIn(BaseModel):
+    token: str = Field(max_length=100)
+
+
+@app.post("/api/login/invite", dependencies=[Depends(require_json)])
+async def login_invite(data: TokenIn, request: Request):
+    """Zeigt, wer eingeladen ist – nimmt die Einladung aber noch NICHT an.
+
+    (Mail-Programme rufen Links teils automatisch auf; angenommen wird erst per Knopfdruck.)
+    """
+    ip = _check_ip(request)
+    inv = db.get_invite(conn, data.token)
+    if not inv:
+        _failed[ip].append(time.time())
+        raise HTTPException(404, "Diese Einladung ist abgelaufen oder wurde schon benutzt.")
+    return {"name": inv["name"], "eingeladen_von": inv["inviter"]}
+
+
+@app.post("/api/login/invite/accept", dependencies=[Depends(require_json)])
+async def login_invite_accept(data: TokenIn, request: Request, response: Response):
+    ip = _check_ip(request)
+    outbox: list[dict] = []
+    try:
+        person = db.accept_invite(conn, data.token, outbox)
+    except db.WishError as e:
+        _failed[ip].append(time.time())
+        raise HTTPException(404, str(e))
+    _notify(outbox)
+    token = db.create_session(conn, person["id"])
+    response.set_cookie(COOKIE, token, max_age=db.SESSION_DAYS * 86400, httponly=True,
+                        secure=COOKIE_SECURE, samesite="strict")
+    return {"name": person["name"]}
+
+
+@app.post("/api/login/invite/resend", dependencies=[Depends(require_json)])
+async def login_invite_resend(data: StartIn, request: Request):
+    _check_ip(request)
+    try:
+        res = db.resend_invite(conn, _clean_name(data.name))
+    except db.WishError as e:
+        raise HTTPException(429, str(e))
+    if not res:
+        raise HTTPException(404, "Für diesen Namen gibt es keine offene Einladung.")
+    token, inv = res
+    await _send_invite(inv["email"], inv["name"], inv["inviter"], token)
+    return {"email": _mask(inv["email"])}
 
 
 @app.post("/api/login/verify", dependencies=[Depends(require_json)])
 async def login_verify(data: VerifyIn, request: Request, response: Response):
     ip = _check_ip(request)
+    outbox: list[dict] = []
     try:
-        person = db.verify_otp(conn, _clean_name(data.name), data.code)
+        person = db.verify_otp(conn, _clean_name(data.name), data.code, outbox)
     except db.WishError as e:
         _failed[ip].append(time.time())
         raise HTTPException(401, str(e))
+    _notify(outbox)
     token = db.create_session(conn, person["id"])
     response.set_cookie(COOKIE, token, max_age=db.SESSION_DAYS * 86400, httponly=True,
                         secure=COOKIE_SECURE, samesite="strict")
@@ -154,9 +240,28 @@ async def me(person=Depends(current_person)):
 
 @app.get("/api/familie")
 async def familie(person=Depends(current_person)):
-    # Nur Name + Status – keine Mail-Adressen, keine Wunsch- oder Reservierungsinfos
-    return [{"name": p["name"], "registriert": bool(p["email"]), "du": p["id"] == person["id"]}
-            for p in db.list_persons(conn)]
+    # Nur Name + Status (registriert/eingeladen/offen) – keine Mail-Adressen, keine Wünsche
+    return [{"name": p["name"], "status": p["status"], "du": p["id"] == person["id"]}
+            for p in db.family_status(conn)]
+
+
+class EinladungIn(BaseModel):
+    name: str = Field(max_length=60)
+    email: str = Field(max_length=200)
+    bestehend: bool = False      # True = „Einladen“/„Erneut“ bei einer vorhandenen Person in der Liste
+
+
+@app.post("/api/einladung", dependencies=[Depends(require_json)])
+async def einladung(data: EinladungIn, person=Depends(current_person)):
+    email = data.email.strip()
+    if not EMAIL_RE.match(email):
+        raise HTTPException(400, "Bitte eine gültige Mail-Adresse angeben.")
+    try:
+        token, name = db.create_invite(conn, person["id"], _clean_name(data.name), email, existing=data.bestehend)
+    except db.WishError as e:
+        raise HTTPException(409, str(e))
+    await _send_invite(email, name, person["name"], token)
+    return {"name": name, "email": email}
 
 
 # --- Chat --------------------------------------------------------------------

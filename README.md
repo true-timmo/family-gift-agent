@@ -12,7 +12,9 @@ fragen nach den Wünschen anderer („Was wünscht sich Mama?“) und reserviere
 - **Reservierungen**: doppelte Reservierung ausgeschlossen, auch bei gleichzeitigen Anfragen
 - **Überraschungsschutz**: Wer sich etwas wünscht, erfährt nie, ob es schon jemand besorgt
 - **Benachrichtigung per Mail**, wenn ein bereits reservierter Wunsch entfernt wird
-- **Anmeldung per Einmal-Code (OTP)** per Mail, Registrierung mit Familien-Code, keine Passwörter
+- **Einladungen per Mail**: Name und Adresse legt der Einladende fest, ein Klick auf den Link genügt
+- **Anmeldung per Einmal-Code (OTP)** per Mail, keine Passwörter; Familien-Code als optionaler Ausweg
+- **Familienübersicht** mit Status (registriert / eingeladen / noch nicht dabei), Info-Mail bei Neuregistrierung
 - **Hilfeseiten** in einfacher Sprache, Handy-tauglich, als App auf dem Startbildschirm speicherbar
 
 Die Regeln (Reservierung, Überraschungsschutz, Berechtigungen) stehen im Code (`app/db.py`),

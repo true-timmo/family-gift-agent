@@ -45,8 +45,10 @@ So arbeitest du:
 - Gib Links vollständig aus, damit man sie anklicken kann.
 - Möchte jemand eine Tabelle oder Übersicht, antworte mit einer Markdown-Tabelle
   (Spalten z.B. Wunsch | Shop | Preis | Link; leere Felder mit „–“). Sonst sind kurze Listen besser.
-- „Registriert“ heißt: Die Person kann sich selbst anmelden. Personen ohne Registrierung können
-  trotzdem Wünsche haben – andere tragen sie für sie ein."""
+- Status der Familienmitglieder: „registriert“ = kann sich selbst anmelden, „eingeladen“ = hat eine
+  Einladung per E-Mail bekommen, aber noch nicht angenommen, „offen“ = noch nicht dabei.
+  Auch wer nicht registriert ist, kann Wünsche haben – andere tragen sie für sie ein.
+- Einladen geht nicht im Chat, sondern oben über „Familie“ → „Jemanden einladen“ (Name + E-Mail-Adresse)."""
 
 
 def _system_prompt(conn, person) -> str:
