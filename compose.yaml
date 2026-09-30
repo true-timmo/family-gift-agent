@@ -1,0 +1,30 @@
+# Geschenke-Agent
+#
+# Starten/aktualisieren:  docker compose up -d --build
+# Logs:                   docker compose logs -f
+# Personen verwalten:     docker compose exec agent python -m app.cli --help
+# Tests:                  siehe tests/README.md
+
+services:
+  agent:
+    build: .
+    container_name: geschenke-agent
+    restart: unless-stopped
+    env_file: .env                 # OPENROUTER_API_KEY, MODEL, FALLBACK_MODELS
+    volumes:
+      - ./data:/app/data           # SQLite-Datenbank bleibt bei Updates erhalten
+
+    # KEIN "ports:" – erreichbar nur über Traefik
+    mem_limit: 512m
+    cpus: 1.0
+
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.geschenke.rule=Host(`geschenke.nordhain-gmbh.de`)
+      - traefik.http.routers.geschenke.entrypoints=websecure
+      - traefik.http.routers.geschenke.middlewares=geschenke-ratelimit
+      - traefik.http.services.geschenke.loadbalancer.server.port=8000
+      # Begrenzt Anfragen pro Besucher-IP (schützt vor Missbrauch und API-Kosten)
+      - traefik.http.middlewares.geschenke-ratelimit.ratelimit.average=20
+      - traefik.http.middlewares.geschenke-ratelimit.ratelimit.period=1m
+      - traefik.http.middlewares.geschenke-ratelimit.ratelimit.burst=30

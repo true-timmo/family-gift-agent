@@ -1,0 +1,9 @@
+{
+  "name": "Geschenke",
+  "short_name": "Geschenke",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#faf7f2",
+  "theme_color": "#b4432f",
+  "icons": [{ "src": "/static/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

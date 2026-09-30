@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Geschenke</title>
+<meta name="theme-color" content="#b4432f">
+<link rel="manifest" href="/static/manifest.json">
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/icon.svg">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<main id="login-view" class="login" hidden>
+  <button type="button" class="help-btn help-top" data-help="help-login" aria-label="Hilfe zur Anmeldung öffnen">
+    <span class="help-icon" aria-hidden="true">?</span> Hilfe</button>
+  <img src="/static/icon.svg" alt="" width="64" height="64">
+  <h1>Geschenke</h1>
+  <p class="sub">Wünsche merken, doppelte Geschenke vermeiden.</p>
+  <form id="step-name" class="step">
+    <label>Dein Name <input name="name" autocomplete="username" placeholder="z.B. Mama" required></label>
+    <button type="submit">Weiter</button>
+  </form>
+
+  <form id="step-register" class="step" hidden>
+    <p class="info">Hallo <strong class="name"></strong>, du bist zum ersten Mal hier.
+      Wohin sollen wir deinen Anmeldecode schicken?</p>
+    <label>Mail-Adresse <input name="email" type="email" autocomplete="email" required></label>
+    <label>Familien-Code <input name="family_code" autocomplete="off" required></label>
+    <button type="submit">Code schicken</button>
+  </form>
+
+  <form id="step-code" class="step" hidden>
+    <p class="info">Wir haben einen Code an <strong class="email"></strong> geschickt.</p>
+    <label>Code aus der Mail
+      <input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required></label>
+    <button type="submit">Anmelden</button>
+    <button type="button" class="link resend">Neuen Code schicken</button>
+  </form>
+
+  <p id="login-error" class="error" role="alert"></p>
+  <button type="button" id="login-back" class="link" hidden>← Anderer Name</button>
+</main>
+
+<div id="chat-view" class="chat" hidden>
+  <header>
+    <span class="title">🎁<span class="title-text"> Geschenke</span></span>
+    <span id="who" class="who"></span>
+    <button type="button" class="help-btn" data-help="help-chat" aria-label="Hilfe öffnen">
+      <span class="help-icon" aria-hidden="true">?</span></button>
+    <button id="family-btn" class="link" aria-expanded="false" aria-controls="family">Familie</button>
+    <button id="clear-btn" class="link" title="Verlauf leeren">Neu</button>
+    <button id="logout-btn" class="link">Abmelden</button>
+  </header>
+
+  <section id="family" class="family" hidden>
+    <ul id="family-list"></ul>
+    <p class="family-note">Tippe auf einen Namen, um nach den Wünschen zu fragen.
+      Wer noch nicht registriert ist, meldet sich mit dem Namen und dem Familien-Code an.</p>
+  </section>
+
+  <section id="messages" aria-live="polite">
+    <div class="hint">
+      <p>Zum Beispiel:</p>
+      <button class="chip">Ich wünsche mir …</button>
+      <button class="chip">Was wünscht sich Mama?</button>
+      <button class="chip">Was besorge ich gerade?</button>
+    </div>
+  </section>
+
+  <form id="chat-form">
+    <textarea id="input" rows="1" placeholder="Nachricht …" maxlength="2000" required></textarea>
+    <button type="submit" id="send" aria-label="Senden">➤</button>
+  </form>
+</div>
+
+
+<dialog id="help-login" class="help" aria-labelledby="help-login-title">
+  <button type="button" class="help-x" aria-label="Hilfe schließen">✕</button>
+  <h2 id="help-login-title">So meldest du dich an</h2>
+  <p>Du brauchst <strong>kein Passwort</strong>. Stattdessen bekommst du jedes Mal
+    eine <strong>Zahl per E-Mail</strong>. Mit dieser Zahl meldest du dich an.</p>
+
+  <h3>Beim allerersten Mal</h3>
+  <ol>
+    <li>Schreibe deinen <strong>Namen</strong> in das Feld „Dein Name“.
+      Nimm den Namen, unter dem dich die Familie kennt – zum Beispiel <em>Mama</em> oder <em>Oma Gisela</em>.
+      Tippe dann auf <span class="ui">Weiter</span>.</li>
+    <li>Jetzt erscheinen zwei neue Felder.
+      Schreibe in das erste Feld deine <strong>E-Mail-Adresse</strong>.</li>
+    <li>In das zweite Feld kommt der <strong>Familien-Code</strong>. Das ist ein Geheimwort,
+      das nur die Familie kennt. Du bekommst es von Timmo.</li>
+    <li>Tippe auf <span class="ui">Code schicken</span>.</li>
+    <li>Öffne jetzt dein <strong>E-Mail-Postfach</strong>. Dort ist eine neue E-Mail
+      von „Geschenke“. Darin steht eine <strong>Zahl mit 6 Ziffern</strong>, zum Beispiel <span class="code">482913</span>.</li>
+    <li>Komm zurück zu dieser Seite. Tippe die 6 Ziffern in das Feld „Code aus der Mail“
+      und dann auf <span class="ui">Anmelden</span>. <strong>Fertig!</strong></li>
+  </ol>
+
+  <h3>Beim nächsten Mal</h3>
+  <p>Meistens bist du noch angemeldet und musst gar nichts tun.</p>
+  <p>Falls nicht: Namen eingeben → <span class="ui">Weiter</span> → Zahl aus der neuen E-Mail
+    eintippen → <span class="ui">Anmelden</span>.<br>
+    E-Mail-Adresse und Familien-Code brauchst du nur beim allerersten Mal.</p>
+
+  <h3>Wenn etwas nicht klappt</h3>
+  <dl>
+    <dt>Es kommt keine E-Mail.</dt>
+    <dd>Warte eine Minute. Schau auch im Ordner <strong>„Spam“</strong> oder <strong>„Werbung“</strong> nach.
+      Ist sie dort nicht, tippe auf <span class="ui">Neuen Code schicken</span>.</dd>
+    <dt>„Der Code ist abgelaufen“</dt>
+    <dd>Die Zahl gilt nur 10 Minuten. Tippe auf <span class="ui">Neuen Code schicken</span>.
+      Nimm immer die Zahl aus der <strong>neuesten</strong> E-Mail.</dd>
+    <dt>„Der Code stimmt nicht“</dt>
+    <dd>Vergleiche die 6 Ziffern noch einmal genau mit der E-Mail.</dd>
+    <dt>„Der Familien-Code stimmt nicht“</dt>
+    <dd>Frag Timmo nach dem richtigen Wort. Groß- oder Kleinbuchstaben sind egal.</dd>
+    <dt>Falschen Namen eingetippt?</dt>
+    <dd>Tippe auf <span class="ui">← Anderer Name</span> und fang noch einmal an.</dd>
+    <dt>Du kommst gar nicht weiter?</dt>
+    <dd>Kein Problem – ruf einfach Timmo an.</dd>
+  </dl>
+  <button type="button" class="help-close">Schließen</button>
+</dialog>
+
+<dialog id="help-chat" class="help" aria-labelledby="help-chat-title">
+  <button type="button" class="help-x" aria-label="Hilfe schließen">✕</button>
+  <h2 id="help-chat-title">So funktioniert der Geschenke-Helfer</h2>
+  <p>Hier merkt sich ein Helfer die <strong>Geschenkwünsche der Familie</strong>.
+    Du schreibst ihm einfach – so wie eine SMS oder WhatsApp-Nachricht.
+    Du musst keine besonderen Wörter benutzen.</p>
+
+  <h3>So schreibst du eine Nachricht</h3>
+  <ol>
+    <li>Tippe <strong>unten</strong> in das Feld „Nachricht …“.</li>
+    <li>Schreibe, was du möchtest.</li>
+    <li>Tippe rechts daneben auf den <strong>Pfeil</strong> <span class="ui">➤</span>.</li>
+  </ol>
+  <p>Nach ein paar Sekunden kommt die Antwort. Solange der Helfer nachdenkt, siehst du drei Punkte „…“.</p>
+
+  <h3>Was du schreiben kannst</h3>
+  <p class="muted">Du kannst die Sätze genau so abschreiben – oder es mit eigenen Worten sagen.</p>
+  <dl class="examples">
+    <dt>Einen eigenen Wunsch aufschreiben</dt>
+    <dd><q>Ich wünsche mir ein Kochbuch von Tim Mälzer.</q><br>
+      Wenn du weißt, wo es das gibt, schreib es dazu:
+      <q>Das gibt es bei Thalia für 25 Euro.</q></dd>
+    <dt>Nachsehen, was sich jemand wünscht</dt>
+    <dd><q>Was wünscht sich Timmo?</q></dd>
+    <dt>Ein Geschenk besorgen</dt>
+    <dd><q>Ich kaufe Timmo das Buch.</q><br>
+      Dann sehen die anderen dieses Geschenk nicht mehr. So schenkt niemand dasselbe doppelt.</dd>
+    <dt>Es doch nicht besorgen</dt>
+    <dd><q>Ich kaufe Timmo das Buch doch nicht.</q></dd>
+    <dt>Nachsehen, was du besorgen willst</dt>
+    <dd><q>Was besorge ich gerade?</q></dd>
+    <dt>Einen Wunsch ändern</dt>
+    <dd><q>Bei meinem Kochbuch: Das gibt es auch bei Amazon.</q></dd>
+    <dt>Einen Wunsch löschen</dt>
+    <dd><q>Streich das Kochbuch von meiner Liste.</q></dd>
+    <dt>Für jemanden ohne Handy</dt>
+    <dd><q>Oma wünscht sich eine Wärmflasche.</q></dd>
+    <dt>Alles übersichtlich als Tabelle</dt>
+    <dd><q>Zeig mir Timmos Wünsche als Tabelle.</q></dd>
+  </dl>
+
+  <h3>Gut zu wissen</h3>
+  <ul>
+    <li><strong>Die Überraschung bleibt geheim:</strong> Auf deiner eigenen Liste siehst du nie,
+      ob schon jemand etwas davon für dich besorgt.</li>
+    <li><strong>Hat der Helfer dich falsch verstanden?</strong> Schreib einfach noch einmal,
+      was du meinst – zum Beispiel <q>Nein, ich meinte das rote Buch.</q></li>
+    <li><strong>Steht da „nicht erreichbar“?</strong> Warte eine Minute und schicke die Nachricht noch einmal.</li>
+  </ul>
+
+  <h3>Die Knöpfe oben</h3>
+  <dl>
+    <dt><span class="ui">Familie</span></dt>
+    <dd>Zeigt, wer schon mitmacht. Tippe auf einen Namen, um die Wünsche dieser Person zu sehen.</dd>
+    <dt><span class="ui">Neu</span></dt>
+    <dd>Löscht nur das Gespräch auf dem Bildschirm. <strong>Alle Wünsche bleiben gespeichert.</strong></dd>
+    <dt><span class="ui">Abmelden</span></dt>
+    <dd>Brauchst du normalerweise nicht. Nur, wenn du ein fremdes Handy benutzt hast.</dd>
+  </dl>
+
+  <h3>Tipp: Wie eine App aufs Handy legen</h3>
+  <p><strong>iPhone:</strong> Unten auf das Teilen-Zeichen tippen (Viereck mit Pfeil nach oben)
+    → „Zum Home-Bildschirm“.<br>
+    <strong>Android:</strong> Oben rechts auf die drei Punkte ⋮ tippen → „Zum Startbildschirm hinzufügen“.<br>
+    Danach findest du „Geschenke“ mit dem Geschenk-Bild bei deinen anderen Apps.</p>
+  <button type="button" class="help-close">Schließen</button>
+</dialog>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
