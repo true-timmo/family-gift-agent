@@ -85,10 +85,13 @@ async function api(path, body) {
 
 function showLogin() { $("#chat-view").hidden = true; $("#login-view").hidden = false; step("step-name"); }
 
+let isAdmin = false;
+
 async function showChat() {
   const res = await api("/api/me");
   const me = await res.json();
-  $("#who").textContent = me.name;
+  isAdmin = !!me.admin;
+  $("#who").textContent = me.name + (isAdmin ? " · Admin" : "");
   messages.querySelectorAll(".msg").forEach((m) => m.remove());
   me.verlauf.forEach((m) => addMessage(m.role, m.content));
   $("#login-view").hidden = true; $("#chat-view").hidden = false;
@@ -222,14 +225,37 @@ async function loadFamily() {
       act.addEventListener("click", () => openInviteForm(p.name));
       li.append(act);
     }
+    if (isAdmin && !p.du) {   // nur Admin: Person endgültig entfernen
+      const del = document.createElement("button");
+      del.className = "family-action family-delete"; del.type = "button";
+      del.textContent = "Entfernen"; del.title = `${p.name} aus der Familienliste entfernen`;
+      del.addEventListener("click", () => removePerson(p.name));
+      li.append(del);
+    }
     list.append(li);
   }
+}
+
+async function removePerson(name) {
+  const ok = confirm(`${name} wirklich aus der Familienliste entfernen?\n\n` +
+    `• Alle Wünsche von ${name} werden gelöscht (wer davon etwas reserviert hat, bekommt eine Mail).\n` +
+    `• Geschenke, die ${name} besorgen wollte, sind wieder für alle offen.\n` +
+    `• ${name} kann sich nicht mehr anmelden.\n\nDas lässt sich nicht rückgängig machen.`);
+  if (!ok) return;
+  const res = await api("/api/admin/person-entfernen", { name });
+  const data = await res.json();
+  const msg = $("#family-msg");
+  if (!res.ok) { msg.className = "invite-msg err"; msg.textContent = data.detail || "Das hat nicht geklappt."; return; }
+  msg.className = "invite-msg ok";
+  msg.textContent = `${data.name} wurde entfernt (${data.wuensche_geloescht} Wünsche gelöscht, ` +
+                    `${data.reservierungen_freigegeben} Reservierungen freigegeben).`;
+  await loadFamily();
 }
 
 $("#family-btn").addEventListener("click", async () => {
   const panel = $("#family");
   if (!panel.hidden) return closeFamily();
-  $("#invite-form").hidden = true; $("#invite-open").hidden = false;
+  $("#invite-form").hidden = true; $("#invite-open").hidden = false; $("#family-msg").textContent = "";
   await loadFamily();
   panel.hidden = false; $("#family-btn").setAttribute("aria-expanded", "true");
 });

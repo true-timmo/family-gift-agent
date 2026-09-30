@@ -345,3 +345,82 @@ def test_shop_als_link():
     assert db.shop_markdown(None, None) is None
     assert db.shop_markdown("Laden", "javascript:alert(1)") == "Laden"          # nur http(s)-Links
     assert db.shop_markdown("A [B]", "https://x.de/a b(c)") == "[A (B)](https://x.de/a%20b(c%29)"
+
+
+# --- Admin ---------------------------------------------------------------------
+
+@pytest.fixture
+def admin(conn, monkeypatch):
+    monkeypatch.setenv("ADMIN_EMAIL", "MAMA@example.de")          # Mama ist Admin (Groß/klein egal)
+    return IDS["Mama"]
+
+
+def call_admin(conn, tool, outbox=None, **args):
+    return tools.execute(conn, IDS["Mama"], tool, json.dumps(args), outbox, admin=True)
+
+
+def test_admin_erkennung(conn, admin):
+    assert db.is_admin(db.get_person(conn, "Mama"))
+    assert not db.is_admin(db.get_person(conn, "Papa"))
+    assert not db.is_admin(db.get_person(conn, "Oma"))            # ohne Mail nie Admin
+    assert db.admin_person(conn)["name"] == "Mama"
+
+
+def test_admin_bearbeitet_und_entfernt_fremde_wuensche(conn, admin):
+    w = call(conn, "Papa", "wunsch_hinzufuegen", person="Papa", titel="Pfanne")["id"]
+    assert "fehler" in call(conn, "Lena", "wunsch_bearbeiten", wunsch_id=w, link="https://x.de/p")   # kein Admin
+    assert call_admin(conn, "wunsch_bearbeiten", wunsch_id=w, link="https://x.de/p")["shop_anzeige"] == \
+        "[Zum Shop](https://x.de/p)"
+    call(conn, "Lena", "reservieren", wunsch_id=w)
+    outbox = []
+    assert call_admin(conn, "wunsch_entfernen", outbox, wunsch_id=w)["entfernt"]
+    assert outbox[0]["empfaenger"] == "Lena" and outbox[0]["entfernt_von"] == "Mama"
+
+
+def test_admin_ohne_admin_flag_hat_keine_sonderrechte(conn, admin):
+    w = call(conn, "Papa", "wunsch_hinzufuegen", person="Papa", titel="Pfanne")["id"]
+    assert "fehler" in call(conn, "Mama", "wunsch_entfernen", wunsch_id=w)    # Flag kommt nur vom Server
+
+
+def test_ueberraschungsschutz_gilt_auch_fuer_admin(conn, admin):
+    w = call(conn, "Mama", "wunsch_hinzufuegen", person="Mama", titel="Kette")["id"]
+    call(conn, "Papa", "reservieren", wunsch_id=w)
+    dump = json.dumps(call_admin(conn, "wuensche_anzeigen", person="Mama"))
+    assert "Papa" not in dump and "besorgt" not in dump and "reserv" not in dump
+
+
+def test_person_loeschen(conn, admin):
+    papa_wunsch = call(conn, "Papa", "wunsch_hinzufuegen", person="Papa", titel="Pfanne")["id"]
+    call(conn, "Papa", "wunsch_hinzufuegen", person="Papa", titel="Buch")
+    oma_wunsch = call(conn, "Papa", "wunsch_hinzufuegen", person="Oma", titel="Wärmflasche")["id"]  # für andere
+    lena_wunsch = call(conn, "Lena", "wunsch_hinzufuegen", person="Lena", titel="Rad")["id"]
+    call(conn, "Lena", "reservieren", wunsch_id=papa_wunsch)      # Lena besorgt Papas Pfanne
+    call(conn, "Papa", "reservieren", wunsch_id=lena_wunsch)      # Papa besorgt Lenas Rad
+    db.create_session(conn, IDS["Papa"])
+    outbox = []
+    r = db.delete_person(conn, IDS["Mama"], "papa", outbox)
+    assert r == {"name": "Papa", "wuensche_geloescht": 2, "reservierungen_freigegeben": 1}
+    assert db.get_person(conn, "Papa") is None
+    # Lena bekommt Bescheid, dass Papas Pfanne weg ist
+    assert outbox == [{"type": "wunsch_entfernt", "an": "lena@example.de", "empfaenger": "Lena",
+                       "fuer": "Papa", "entfernt_von": "Mama", "titel": "Pfanne"}]
+    # Papas Reservierung ist freigegeben, Omas Wunsch bleibt (jetzt „eingetragen von“ Mama)
+    assert call(conn, "Mama", "wuensche_anzeigen", person="Lena")["wuensche"][0]["status"] == "offen"
+    assert titles(call(conn, "Lena", "wuensche_anzeigen", person="Oma")) == ["Wärmflasche"]
+    assert conn.execute("SELECT created_by FROM wishes WHERE id = ?", (oma_wunsch,)).fetchone()[0] == IDS["Mama"]
+    assert conn.execute("SELECT COUNT(*) FROM sessions WHERE person_id = ?", (IDS["Papa"],)).fetchone()[0] == 0
+
+
+def test_person_loeschen_mit_einladungen(conn, admin):
+    db.create_invite(conn, IDS["Papa"], "Gisela", "gisela@example.de")   # Papa hat Gisela eingeladen
+    db.delete_person(conn, IDS["Mama"], "Papa")
+    assert db.pending_invite(conn, "Gisela")["inviter"] == "Mama"        # Einladung bleibt gültig
+    conn.execute("DELETE FROM otp_sends")
+    token, _ = db.create_invite(conn, IDS["Mama"], "Tante Uschi", "u@example.de")
+    db.delete_person(conn, IDS["Mama"], "Tante Uschi")                    # eingeladen, noch nicht dabei
+    assert db.get_invite(conn, token) is None
+
+
+def test_admin_kann_sich_nicht_selbst_loeschen(conn, admin):
+    with pytest.raises(db.WishError, match="nicht selbst"):
+        db.delete_person(conn, IDS["Mama"], "Mama")
