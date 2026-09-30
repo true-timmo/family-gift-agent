@@ -23,9 +23,23 @@
     <button type="submit">Weiter</button>
   </form>
 
+  <form id="step-invite" class="step" hidden>
+    <p class="info big">Hallo <strong class="name"></strong>! 👋</p>
+    <p class="info"><strong class="inviter"></strong> hat dich zur Geschenke-Liste der Familie eingeladen.</p>
+    <button type="submit">Los geht's</button>
+  </form>
+
+  <form id="step-invited" class="step" hidden>
+    <p class="info">Hallo <strong class="name"></strong>! Für dich liegt eine <strong>Einladung</strong>
+      in deinem E-Mail-Postfach (<span class="email"></span>).</p>
+    <p class="info">Öffne die E-Mail und tippe darin auf <strong>„Einladung annehmen“</strong>.</p>
+    <button type="submit">Einladung nochmal schicken</button>
+  </form>
+
   <form id="step-register" class="step" hidden>
     <p class="info">Hallo <strong class="name"></strong>, du bist zum ersten Mal hier.
-      Wohin sollen wir deinen Anmeldecode schicken?</p>
+      Am einfachsten: Bitte jemanden aus der Familie, dich einzuladen.
+      Wenn du den Familien-Code kennst, geht es auch hier:</p>
     <label>Mail-Adresse <input name="email" type="email" autocomplete="email" required></label>
     <label>Familien-Code <input name="family_code" autocomplete="off" required></label>
     <button type="submit">Code schicken</button>
@@ -56,15 +70,22 @@
 
   <section id="family" class="family" hidden>
     <ul id="family-list"></ul>
-    <p class="family-note">Tippe auf einen Namen, um nach den Wünschen zu fragen.
-      Wer noch nicht registriert ist, meldet sich mit dem Namen und dem Familien-Code an.</p>
+    <p class="family-note">Tippe auf einen Namen, um nach den Wünschen zu fragen.</p>
+    <button type="button" id="invite-open" class="invite-open">＋ Jemanden einladen</button>
+    <form id="invite-form" class="invite-form" hidden>
+      <label>Name <input name="name" placeholder="z.B. Gisela" required></label>
+      <p class="family-note">Am besten den Vornamen – so, wie ihn alle in der Familie kennen.</p>
+      <label>E-Mail-Adresse <input name="email" type="email" autocomplete="off" required></label>
+      <p id="invite-msg" class="invite-msg" role="status"></p>
+      <button type="submit">Einladung per E-Mail senden</button>
+    </form>
   </section>
 
   <section id="messages" aria-live="polite">
     <div class="hint">
       <p>Zum Beispiel:</p>
       <button class="chip">Ich wünsche mir …</button>
-      <button class="chip">Was wünscht sich Mama?</button>
+      <button class="chip">Wer ist in der Familie dabei?</button>
       <button class="chip">Was besorge ich gerade?</button>
     </div>
   </section>
@@ -82,30 +103,35 @@
   <p>Du brauchst <strong>kein Passwort</strong>. Stattdessen bekommst du jedes Mal
     eine <strong>Zahl per E-Mail</strong>. Mit dieser Zahl meldest du dich an.</p>
 
-  <h3>Beim allerersten Mal</h3>
+  <h3>Beim allerersten Mal: mit Einladung</h3>
   <ol>
-    <li>Schreibe deinen <strong>Namen</strong> in das Feld „Dein Name“.
-      Nimm den Namen, unter dem dich die Familie kennt – zum Beispiel <em>Mama</em> oder <em>Oma Gisela</em>.
-      Tippe dann auf <span class="ui">Weiter</span>.</li>
-    <li>Jetzt erscheinen zwei neue Felder.
-      Schreibe in das erste Feld deine <strong>E-Mail-Adresse</strong>.</li>
-    <li>In das zweite Feld kommt der <strong>Familien-Code</strong>. Das ist ein Geheimwort,
-      das nur die Familie kennt. Du bekommst es von Timmo.</li>
-    <li>Tippe auf <span class="ui">Code schicken</span>.</li>
-    <li>Öffne jetzt dein <strong>E-Mail-Postfach</strong>. Dort ist eine neue E-Mail
-      von „Geschenke“. Darin steht eine <strong>Zahl mit 6 Ziffern</strong>, zum Beispiel <span class="code">482913</span>.</li>
-    <li>Komm zurück zu dieser Seite. Tippe die 6 Ziffern in das Feld „Code aus der Mail“
-      und dann auf <span class="ui">Anmelden</span>. <strong>Fertig!</strong></li>
+    <li>Jemand aus der Familie hat dich <strong>per E-Mail eingeladen</strong>.
+      Öffne dein E-Mail-Postfach. Dort ist eine E-Mail von „Geschenke“ mit dem Betreff
+      „… lädt dich zur Geschenke-Liste ein“.</li>
+    <li>Tippe in der E-Mail auf den roten Knopf <span class="ui">Einladung annehmen</span>.</li>
+    <li>Diese Seite öffnet sich und begrüßt dich mit deinem Namen.
+      Tippe auf <span class="ui">Los geht's</span>. <strong>Fertig!</strong></li>
   </ol>
+  <p>In der Einladung steht auch <strong>dein Name zum Anmelden</strong>. Merk ihn dir oder schreib ihn auf.</p>
 
   <h3>Beim nächsten Mal</h3>
   <p>Meistens bist du noch angemeldet und musst gar nichts tun.</p>
-  <p>Falls nicht: Namen eingeben → <span class="ui">Weiter</span> → Zahl aus der neuen E-Mail
-    eintippen → <span class="ui">Anmelden</span>.<br>
-    E-Mail-Adresse und Familien-Code brauchst du nur beim allerersten Mal.</p>
+  <p>Falls nicht:</p>
+  <ol>
+    <li>Schreibe deinen <strong>Namen</strong> in das Feld „Dein Name“ – so wie er in der Einladung stand.
+      Tippe auf <span class="ui">Weiter</span>.</li>
+    <li>Wir schicken dir eine E-Mail mit einer <strong>Zahl mit 6 Ziffern</strong>, zum Beispiel <span class="code">482913</span>.</li>
+    <li>Tippe die 6 Ziffern in das Feld „Code aus der Mail“ und dann auf <span class="ui">Anmelden</span>.</li>
+  </ol>
 
   <h3>Wenn etwas nicht klappt</h3>
   <dl>
+    <dt>Ich finde die Einladung nicht.</dt>
+    <dd>Schau im Ordner <strong>„Spam“</strong> oder <strong>„Werbung“</strong> nach. Oder schreibe hier
+      deinen Namen hinein und tippe auf <span class="ui">Weiter</span> – dann kannst du dir die Einladung
+      <strong>nochmal schicken</strong> lassen.</dd>
+    <dt>„Diese Einladung ist abgelaufen“</dt>
+    <dd>Eine Einladung gilt 7 Tage. Bitte die Person, die dich eingeladen hat, dich nochmal einzuladen.</dd>
     <dt>Es kommt keine E-Mail.</dt>
     <dd>Warte eine Minute. Schau auch im Ordner <strong>„Spam“</strong> oder <strong>„Werbung“</strong> nach.
       Ist sie dort nicht, tippe auf <span class="ui">Neuen Code schicken</span>.</dd>
@@ -114,8 +140,9 @@
       Nimm immer die Zahl aus der <strong>neuesten</strong> E-Mail.</dd>
     <dt>„Der Code stimmt nicht“</dt>
     <dd>Vergleiche die 6 Ziffern noch einmal genau mit der E-Mail.</dd>
-    <dt>„Der Familien-Code stimmt nicht“</dt>
-    <dd>Frag Timmo nach dem richtigen Wort. Groß- oder Kleinbuchstaben sind egal.</dd>
+    <dt>„Du bist zum ersten Mal hier“</dt>
+    <dd>Dann gibt es für diesen Namen noch keine Einladung – oder der Name ist anders geschrieben.
+      Schau in der Einladungs-E-Mail nach, wie dein Name dort steht, oder frag Timmo.</dd>
     <dt>Falschen Namen eingetippt?</dt>
     <dd>Tippe auf <span class="ui">← Anderer Name</span> und fang noch einmal an.</dd>
     <dt>Du kommst gar nicht weiter?</dt>
@@ -177,7 +204,10 @@
   <h3>Die Knöpfe oben</h3>
   <dl>
     <dt><span class="ui">Familie</span></dt>
-    <dd>Zeigt, wer schon mitmacht. Tippe auf einen Namen, um die Wünsche dieser Person zu sehen.</dd>
+    <dd>Zeigt, wer schon mitmacht. Tippe auf einen Namen, um die Wünsche dieser Person zu sehen.<br>
+      Mit <span class="ui">＋ Jemanden einladen</span> kannst du weitere Familienmitglieder einladen:
+      Vornamen und E-Mail-Adresse eintragen, fertig. Die Person bekommt eine E-Mail mit einem Knopf
+      zum Annehmen. Bis dahin steht bei ihr <em>„eingeladen“</em>, danach <em>„registriert“</em>.</dd>
     <dt><span class="ui">Neu</span></dt>
     <dd>Löscht nur das Gespräch auf dem Bildschirm. <strong>Alle Wünsche bleiben gespeichert.</strong></dd>
     <dt><span class="ui">Abmelden</span></dt>

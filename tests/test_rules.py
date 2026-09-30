@@ -226,6 +226,110 @@ def test_benachrichtigungsmail(monkeypatch, capsys):
 
 def test_personenliste_mit_registrierungsstatus(conn):
     r = call(conn, "Mama", "personen_auflisten")
-    assert {"name": "Oma", "registriert": False} in r["personen"]
-    assert {"name": "Mama", "registriert": True} in r["personen"]
+    assert {"name": "Oma", "status": "offen"} in r["personen"]
+    assert {"name": "Mama", "status": "registriert"} in r["personen"]
     assert "@" not in json.dumps(r)                  # keine Mail-Adressen ans Modell
+
+
+def status_of(conn, name):
+    return next(p["status"] for p in db.family_status(conn) if p["name"] == name)
+
+
+def test_einladung_neue_person(conn):
+    token, name = db.create_invite(conn, IDS["Mama"], "Gisela", "gisela@example.de")
+    assert name == "Gisela" and status_of(conn, "Gisela") == "eingeladen"
+    # Schon vor dem Annehmen können andere Wünsche für Gisela eintragen
+    assert "fehler" not in call(conn, "Papa", "wunsch_hinzufuegen", person="Gisela", titel="Schal")
+    info = db.get_invite(conn, token)
+    assert (info["name"], info["inviter"]) == ("Gisela", "Mama")
+    outbox = []
+    p = db.accept_invite(conn, token, outbox)
+    assert (p["name"], p["email"]) == ("Gisela", "gisela@example.de")
+    assert status_of(conn, "Gisela") == "registriert"
+    assert outbox == [{"type": "neu_registriert", "name": "Gisela", "eingeladen_von": "Mama"}]
+
+
+def test_einladung_nur_einmal_gueltig(conn):
+    token, _ = db.create_invite(conn, IDS["Mama"], "Gisela", "gisela@example.de")
+    db.accept_invite(conn, token)
+    assert db.get_invite(conn, token) is None
+    with pytest.raises(db.WishError, match="abgelaufen oder wurde schon benutzt"):
+        db.accept_invite(conn, token)
+
+
+def test_einladung_abgelaufen(conn):
+    token, _ = db.create_invite(conn, IDS["Mama"], "Gisela", "gisela@example.de")
+    conn.execute("UPDATE invites SET expires_at = 0")
+    assert status_of(conn, "Gisela") == "offen"
+    with pytest.raises(db.WishError, match="abgelaufen"):
+        db.accept_invite(conn, token)
+
+
+def test_einladung_korrigiert_falsche_adresse(conn):
+    alt, _ = db.create_invite(conn, IDS["Mama"], "Oma", "oma@tippfehler.de", existing=True)
+    conn.execute("DELETE FROM otp_sends")                     # Versandlimit für den Test zurücksetzen
+    neu, _ = db.create_invite(conn, IDS["Mama"], "oma", "oma@example.de", existing=True)
+    assert db.get_invite(conn, alt) is None                   # alter Link ungültig
+    oma = db.accept_invite(conn, neu)
+    assert oma["id"] == IDS["Oma"] and oma["email"] == "oma@example.de"   # bestehende Person übernommen
+
+
+def test_registrierte_person_nicht_einladbar(conn):
+    with pytest.raises(db.WishError, match="schon registriert"):
+        db.create_invite(conn, IDS["Mama"], "Papa", "papa2@example.de")
+
+
+def test_einladung_nochmal_schicken(conn):
+    alt, _ = db.create_invite(conn, IDS["Mama"], "Gisela", "gisela@example.de")
+    with pytest.raises(db.WishError, match="warten"):          # Versandlimit greift auch hier
+        db.resend_invite(conn, "Gisela")
+    conn.execute("DELETE FROM otp_sends")
+    neu, inv = db.resend_invite(conn, "gisela")
+    assert inv["email"] == "gisela@example.de" and inv["inviter"] == "Mama"
+    assert db.get_invite(conn, alt) is None and db.get_invite(conn, neu)["name"] == "Gisela"
+    assert db.resend_invite(conn, "Lena") is None             # registriert → keine offene Einladung
+
+
+def test_einladungsmail(monkeypatch, capsys):
+    import asyncio
+    from app import mailer
+    monkeypatch.setenv("MAIL_DEBUG", "1")
+    asyncio.run(mailer.send_invite("g@example.de", "Gisela", "Timmo", "https://x/?einladung=abc", 7))
+    out = capsys.readouterr().out
+    assert "Timmo lädt dich zur Geschenke-Liste ein" in out and "Dein Name zum Anmelden: Gisela" in out
+
+
+def test_neue_einladung_mit_vorhandenem_namen_abgelehnt(conn):
+    with pytest.raises(db.WishError, match="Oma gibt es schon"):             # offen, ohne Login
+        db.create_invite(conn, IDS["Mama"], "oma", "oma@example.de")
+    db.create_invite(conn, IDS["Mama"], "Gisela", "gisela@example.de")
+    with pytest.raises(db.WishError, match="schon eingeladen"):               # offene Einladung
+        db.create_invite(conn, IDS["Papa"], "Gisela", "gisela2@example.de")
+    with pytest.raises(db.WishError, match="gibt es nicht"):                  # „Erneut“ für Unbekannte
+        db.create_invite(conn, IDS["Papa"], "Unbekannt", "u@example.de", existing=True)
+
+
+def test_mailadresse_nur_einmal(conn):
+    with pytest.raises(db.WishError, match="gehört schon zu Mama"):          # registrierte Person
+        db.create_invite(conn, IDS["Papa"], "Gisela", "MAMA@Example.de")       # Groß/klein egal
+    db.create_invite(conn, IDS["Papa"], "Gisela", "gisela@example.de")
+    with pytest.raises(db.WishError, match="gehört schon zu Gisela"):        # offene Einladung
+        db.create_invite(conn, IDS["Papa"], "Oma", "gisela@example.de", existing=True)
+    conn.execute("DELETE FROM otp_sends")
+    db.create_invite(conn, IDS["Papa"], "Gisela", "gisela@example.de", existing=True)   # gleiche Person: ok
+    with pytest.raises(db.WishError, match="gehört schon zu Papa"):
+        db.set_email(conn, "Oma", "papa@example.de")
+
+
+def test_registrierung_mit_vergebener_mail_scheitert(conn):
+    code = db.create_otp(conn, "Tante Uschi", "lena@example.de", register=True)
+    with pytest.raises(db.WishError, match="schon verwendet"):
+        db.verify_otp(conn, "Tante Uschi", code)
+    assert db.get_person(conn, "Tante Uschi") is None
+
+
+def test_annehmen_wenn_mail_inzwischen_vergeben(conn):
+    token, _ = db.create_invite(conn, IDS["Mama"], "Gisela", "gisela@example.de")
+    conn.execute("UPDATE persons SET email = 'gisela@example.de' WHERE name = 'Oma'")   # Sonderfall
+    with pytest.raises(db.WishError, match="inzwischen von jemand anderem"):
+        db.accept_invite(conn, token)

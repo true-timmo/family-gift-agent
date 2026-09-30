@@ -32,7 +32,7 @@ _WISH_FIELDS = {
 }
 
 TOOLS = [
-    _tool("personen_auflisten", "Listet alle Familienmitglieder und ob sie sich schon registriert haben."),
+    _tool("personen_auflisten", "Listet alle Familienmitglieder mit Status: registriert, eingeladen oder offen."),
     _tool(
         "wunsch_hinzufuegen",
         "Trägt einen Geschenkwunsch ein. Für eigene Wünsche den eigenen Namen als 'person' verwenden.",
@@ -89,7 +89,7 @@ def execute(conn, actor_id: int, name: str, raw_args: str, outbox: list | None =
     try:
         match name:
             case "personen_auflisten":
-                return {"personen": [{"name": p["name"], "registriert": bool(p["email"])} for p in db.list_persons(conn)]}
+                return {"personen": [{"name": p["name"], "status": p["status"]} for p in db.family_status(conn)]}
             case "wunsch_hinzufuegen":
                 return db.add_wish(conn, actor_id, args["person"], args["titel"],
                                    args.get("beschreibung"), args.get("shop"),
