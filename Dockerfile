@@ -1,3 +1,12 @@
+# --- 1. Oberfläche: TypeScript prüfen, testen und bündeln ---
+FROM node:24-alpine AS frontend
+WORKDIR /src/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --no-fund --no-audit
+COPY frontend/ ./
+RUN npm run check && npm test && npm run build
+
+# --- 2. Server ---
 FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
@@ -7,6 +16,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
+COPY --from=frontend /src/app/static/dist ./app/static/dist
 
 # Nicht als root laufen; UID 1000 = mulaschnick auf dem Host (Besitzer von ./data)
 USER 1000:1000

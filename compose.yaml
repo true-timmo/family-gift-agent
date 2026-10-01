@@ -3,7 +3,7 @@
 # Starten/aktualisieren:  docker compose up -d --build
 # Logs:                   docker compose logs -f
 # Personen verwalten:     docker compose exec agent python -m app.cli --help
-# Tests:                  siehe tests/README.md
+# Tests:                  siehe README.md
 
 services:
   agent:

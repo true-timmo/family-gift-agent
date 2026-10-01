@@ -3,3 +3,5 @@ data/
 tests/
 __pycache__/
 *.pyc
+frontend/node_modules/
+app/static/dist/
