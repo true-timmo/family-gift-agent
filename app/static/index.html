@@ -18,43 +18,7 @@
   <img src="/static/icon.svg" alt="" width="64" height="64">
   <h1>Geschenke</h1>
   <p class="sub">Wünsche merken, doppelte Geschenke vermeiden.</p>
-  <form id="step-name" class="step">
-    <label>Dein Name <input name="name" autocomplete="username" placeholder="z.B. Mama" required></label>
-    <button type="submit">Weiter</button>
-  </form>
-
-  <form id="step-invite" class="step" hidden>
-    <p class="info big">Hallo <strong class="name"></strong>! 👋</p>
-    <p class="info"><strong class="inviter"></strong> hat dich zur Geschenke-Liste der Familie eingeladen.</p>
-    <button type="submit">Los geht's</button>
-  </form>
-
-  <form id="step-invited" class="step" hidden>
-    <p class="info">Hallo <strong class="name"></strong>! Für dich liegt eine <strong>Einladung</strong>
-      in deinem E-Mail-Postfach (<span class="email"></span>).</p>
-    <p class="info">Öffne die E-Mail und tippe darin auf <strong>„Einladung annehmen“</strong>.</p>
-    <button type="submit">Einladung nochmal schicken</button>
-  </form>
-
-  <form id="step-register" class="step" hidden>
-    <p class="info">Hallo <strong class="name"></strong>, du bist zum ersten Mal hier.
-      Am einfachsten: Bitte jemanden aus der Familie, dich einzuladen.
-      Wenn du den Familien-Code kennst, geht es auch hier:</p>
-    <label>Mail-Adresse <input name="email" type="email" autocomplete="email" required></label>
-    <label>Familien-Code <input name="family_code" autocomplete="off" required></label>
-    <button type="submit">Code schicken</button>
-  </form>
-
-  <form id="step-code" class="step" hidden>
-    <p class="info">Wir haben einen Code an <strong class="email"></strong> geschickt.</p>
-    <label>Code aus der Mail
-      <input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required></label>
-    <button type="submit">Anmelden</button>
-    <button type="button" class="link resend">Neuen Code schicken</button>
-  </form>
-
-  <p id="login-error" class="error" role="alert"></p>
-  <button type="button" id="login-back" class="link" hidden>← Anderer Name</button>
+  <div id="login-steps"></div>
 </main>
 
 <div id="chat-view" class="chat" hidden>
@@ -68,28 +32,9 @@
     <button id="logout-btn" class="link">Abmelden</button>
   </header>
 
-  <section id="family" class="family" hidden>
-    <ul id="family-list"></ul>
-    <p id="family-msg" class="invite-msg" role="status"></p>
-    <p class="family-note">Tippe auf einen Namen, um nach den Wünschen zu fragen.</p>
-    <button type="button" id="invite-open" class="invite-open">＋ Jemanden einladen</button>
-    <form id="invite-form" class="invite-form" hidden>
-      <label>Name <input name="name" placeholder="z.B. Gisela" required></label>
-      <p class="family-note">Am besten den Vornamen – so, wie ihn alle in der Familie kennen.</p>
-      <label>E-Mail-Adresse <input name="email" type="email" autocomplete="off" required></label>
-      <p id="invite-msg" class="invite-msg" role="status"></p>
-      <button type="submit">Einladung per E-Mail senden</button>
-    </form>
-  </section>
+  <section id="family" class="family" hidden></section>
 
-  <section id="messages" aria-live="polite">
-    <div class="hint">
-      <p>Zum Beispiel:</p>
-      <button class="chip">Ich wünsche mir …</button>
-      <button class="chip">Wer ist in der Familie dabei?</button>
-      <button class="chip">Was besorge ich gerade?</button>
-    </div>
-  </section>
+  <section id="messages" aria-live="polite"></section>
 
   <form id="chat-form">
     <textarea id="input" rows="1" placeholder="Nachricht …" maxlength="2000" required></textarea>
@@ -224,6 +169,6 @@
   <button type="button" class="help-close">Schließen</button>
 </dialog>
 
-<script src="/static/app.js"></script>
+<script src="/static/dist/app.js"></script>
 </body>
 </html>

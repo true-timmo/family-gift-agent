@@ -1,0 +1,11 @@
+{% extends "layout.html" %}
+{% block body %}
+<p style="font-size:18px">Hallo {{ name }},</p>
+<p style="font-size:18px"><strong>{{ inviter }}</strong> hat dich zur <strong>Geschenke-Liste der Familie</strong> eingeladen.
+Dort sammeln wir Geschenkwünsche – damit niemand etwas doppelt schenkt.</p>
+<p style="margin:28px 0"><a href="{{ link }}" style="display:inline-block;background:#b4432f;color:#fff;
+text-decoration:none;font-size:20px;font-weight:600;padding:14px 28px;border-radius:12px">Einladung annehmen</a></p>
+<p style="font-size:16px">Dein Name zum Anmelden: <strong>{{ name }}</strong></p>
+<p style="color:#7a716a;font-size:14px">Die Einladung gilt {{ days }} Tage. Falls der Knopf nicht funktioniert,
+kopiere diesen Link in den Browser:<br><a href="{{ link }}" style="color:#b4432f">{{ link }}</a></p>
+{% endblock %}

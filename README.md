@@ -18,22 +18,31 @@ fragen nach den Wünschen anderer („Was wünscht sich Mama?“) und reserviere
 - **Familienübersicht** mit Status (registriert / eingeladen / noch nicht dabei), Info-Mail bei Neuregistrierung
 - **Hilfeseiten** in einfacher Sprache, Handy-tauglich, als App auf dem Startbildschirm speicherbar
 
-Die Regeln (Reservierung, Überraschungsschutz, Berechtigungen) stehen im Code (`app/db.py`),
+Die Regeln (Reservierung, Überraschungsschutz, Berechtigungen) stehen im Code (`app/services/`),
 nicht im Prompt – das Modell ruft nur Tools auf und kann sie nicht umgehen.
 
 ## Aufbau
 
 ```
 app/
-  main.py      Web-Server (FastAPI): Login, Chat (Server-Sent Events), Familienliste
-  agent.py     Gespräch mit OpenRouter, Tool-Aufrufe, Streaming
-  tools.py     Tools, die das Modell aufrufen darf
-  db.py        SQLite: Personen, Wünsche, Reservierungen, Codes, Sessions
-  mailer.py    Mailversand per SMTP
+  domain/      Fachbegriffe: Datenobjekte, Fehler, Benachrichtigungen, Eingabeprüfung (ohne Technik)
+  storage/     SQLite: Database (Transaktionen) und je Tabelle ein Repository – nur SQL, keine Regeln
+  services/    Die Regeln: Wünsche & Reservierungen, Login-Codes, Sitzungen, Einladungen, Familie
+  agent/       Chat mit OpenRouter: Tool-Klassen, Presenter (was das Modell sieht), System-Prompt
+  mail/        Mailer mit Jinja2-Vorlagen (templates/: je Mail .txt + .html), SMTP oder Log
+  web/         FastAPI: Router, Abhängigkeiten, Cookie, IP-Sperre, Fehler → HTTP-Status
+  container.py Setzt alles zusammen – hier entsteht jedes Objekt (Composition Root)
+  main.py      Einstieg für uvicorn
   cli.py       Verwaltung auf der Kommandozeile
-  static/      Oberfläche (HTML/CSS/JS, ohne Build-Schritt)
-tests/         pytest-Tests für die Regeln
+  static/      index.html, CSS, Icons; dist/ = gebündeltes Frontend (wird gebaut, nicht eingecheckt)
+frontend/      Oberfläche in TypeScript mit lit-html-Templates, gebündelt mit esbuild
+  src/views/   Login, Chat, Familie – je View eine Klasse (Logik) und eine *.templates.ts (Markup)
+tests/         pytest: Regeln, Login, Einladungen, Admin, Mails, Web-API, Agent-Schleife
 ```
+
+Abhängigkeiten zeigen nur nach innen: `web`/`agent`/`cli` → `services` → `storage` → `domain`.
+Services bekommen alles, was sie brauchen, im Konstruktor – Tests tauschen so Datenbank,
+Mailversand und Benachrichtigungen aus.
 
 ## Einrichtung
 
@@ -60,9 +69,14 @@ docker compose exec agent python -m app.cli --help              # alle Befehle
 ## Tests
 
 ```bash
+# Backend
 docker compose build
-docker run --rm -v "$PWD":/src -w /src -e HOME=/tmp agent-agent \
-  sh -c "pip install -q --user pytest && python -m pytest -q tests"
+docker run --rm -u 1000:1000 -v "$PWD":/src -w /src -e HOME=/tmp agent-agent \
+  sh -c "pip install -q --user pytest httpx && python -m pytest -q tests"
+
+# Frontend (Typprüfung, Tests, Build) – läuft auch automatisch bei docker compose build
+docker run --rm -u 1000:1000 -v "$PWD":/src -w /src/frontend -e HOME=/tmp node:24-alpine \
+  sh -c "npm ci && npm run check && npm test && npm run build"
 ```
 
 Für lokale Tests ohne Mailversand: `MAIL_DEBUG=1` schreibt Codes und Mails ins Log.

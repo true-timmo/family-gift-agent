@@ -1,0 +1,9 @@
+{% extends "layout.html" %}
+{% block body %}
+<p>Hallo {{ name }},</p>
+<p>dein Anmeldecode lautet:</p>
+<p style="font-size:32px;letter-spacing:6px;font-weight:600;margin:16px 0">{{ code }}</p>
+<p>Er ist {{ minutes }} Minuten gültig.</p>
+<p>Dein Name zum Anmelden: <strong>{{ name }}</strong></p>
+<p style="color:#7a716a">Falls du dich nicht angemeldet hast, kannst du diese Mail einfach ignorieren.</p>
+{% endblock %}

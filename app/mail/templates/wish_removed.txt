@@ -1,0 +1,9 @@
+{% extends "layout.txt" %}
+{% block body %}
+Hallo {{ recipient_name }},
+
+{{ removed_by }} hat „{{ title }}“ {{ where }} genommen.
+Du hattest dieses Geschenk reserviert.
+
+Falls du es schon gekauft hast: Vielleicht lässt es sich zurückgeben oder passt zu einem anderen Anlass.
+{% endblock %}
