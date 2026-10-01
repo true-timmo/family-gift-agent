@@ -9,6 +9,7 @@ from typing import ClassVar, Iterable
 
 from ..domain.errors import DomainError
 from ..domain.models import Actor, Reservation
+from ..domain.values import person_name
 from ..services import FamilyService, RelationService, WishService
 from . import presenter
 
@@ -67,6 +68,21 @@ class ListPersons(Tool):
 
     def run(self, actor: Actor, args: dict) -> dict:
         return {"personen": [{"name": m.name, "status": str(m.status)} for m in self._family.members()]}
+
+
+class AddPerson(Tool):
+    name = "person_anlegen"
+    description = ("Legt ein Familienmitglied OHNE eigenen Login an, z.B. ein Kind ohne E-Mail-Adresse – danach kann "
+                   "man Wünsche für es eintragen. Vorher kurz nachfragen, ob die Person wirklich neu ist (Tippfehler?). "
+                   "Wer eine E-Mail-Adresse hat, wird besser eingeladen (Familie → Jemanden einladen).")
+    parameters = {"name": {"type": "string", "description": "Vorname, so wie ihn alle in der Familie kennen"}}
+    required = ("name",)
+
+    def __init__(self, family: FamilyService):
+        self._family = family
+
+    def run(self, actor: Actor, args: dict) -> dict:
+        return {"angelegt": self._family.add_without_login(person_name(args["name"])).name}
 
 
 class AddWish(WishTool):
@@ -189,7 +205,7 @@ class ToolRegistry:
 
     @classmethod
     def standard(cls, wishes: WishService, family: FamilyService, relations: RelationService) -> "ToolRegistry":
-        return cls([ListPersons(family), AddWish(wishes), ShowWishes(wishes), Reserve(wishes), Unreserve(wishes),
+        return cls([ListPersons(family), AddPerson(family), AddWish(wishes), ShowWishes(wishes), Reserve(wishes), Unreserve(wishes),
                     MyReservations(wishes), EditWish(wishes), RemoveWish(wishes),
                     AddRelation(relations), RemoveRelation(relations), ShowRelatives(relations)])
 

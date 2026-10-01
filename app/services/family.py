@@ -26,6 +26,15 @@ class FamilyService:
     def add(self, name: str, email: str | None = None) -> Person:
         return self._persons.by_id(self._persons.add(name, email))
 
+    def add_without_login(self, name: str) -> Person:
+        """Person ohne eigenen Login, z.B. Kinder ohne Mail-Adresse – andere tragen ihre Wünsche ein.
+
+        Später lässt sie sich in der Familienliste einladen und übernimmt dann ihre Liste.
+        """
+        if existing := self._persons.by_name(name):
+            raise ConflictError(f"{existing.name} gibt es schon in der Familienliste.")
+        return self.add(name)
+
     def set_email(self, name: str, email: str | None) -> None:
         """Mail-Adresse ändern; None entfernt sie (dann ist kein Login mehr möglich)."""
         person = self._persons.require(name)

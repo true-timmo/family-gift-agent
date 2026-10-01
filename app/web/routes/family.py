@@ -31,6 +31,14 @@ async def invite(data: InvitationIn, actor: Actor = Depends(current_actor), c: C
     return {"name": issued.name, "email": email}
 
 
+@router.post("/person", dependencies=[Depends(require_json)])
+async def add_person(data: NameIn, actor: Actor = Depends(current_actor), c: Container = Depends(container)):
+    """Familienmitglied ohne Login anlegen (z.B. Kinder ohne Mail-Adresse)."""
+    person = c.family.add_without_login(person_name(data.name))
+    log.info("%s hat %s (ohne Login) angelegt", actor.name, person.name)
+    return {"name": person.name}
+
+
 @router.post("/admin/person-entfernen", dependencies=[Depends(require_json)])
 async def remove_person(data: NameIn, admin: Actor = Depends(current_admin), c: Container = Depends(container)):
     removal = c.removals.remove(admin.person, data.name)

@@ -80,6 +80,7 @@ export class Api {
   invite(name: string, email: string, bestehend: boolean) {
     return this.post<{ name: string; email: string }>("/api/einladung", { name, email, bestehend });
   }
+  addPerson(name: string) { return this.post<{ name: string }>("/api/person", { name }); }
   removePerson(name: string) { return this.post<Removal>("/api/admin/person-entfernen", { name }); }
 
   // --- Chat ---

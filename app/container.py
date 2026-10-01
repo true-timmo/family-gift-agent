@@ -12,7 +12,7 @@ from .config import Settings
 from .domain.notifications import Notifier
 from .mail import BackgroundMailNotifier, ConsoleTransport, Mailer, MailTransport, SmtpTransport
 from .services import (AdminPolicy, EmailDirectory, FamilyService, InvitationService, LoginCodeService,
-                       MailRateLimiter, PersonRemovalService, PersonResolver, RelationService, RemovalNotices,
+                       MailRateLimiter, Guardianship, PersonRemovalService, PersonResolver, RelationService, RemovalNotices,
                        SessionService, WishService)
 from .storage import (ChatRepository, Database, InviteRepository, LoginCodeRepository, MailLog, PersonRepository,
                       RelationRepository, SessionRepository, WishRepository)
@@ -46,7 +46,7 @@ class Container:
         self.family = FamilyService(persons, emails)
         resolver = PersonResolver(persons, relations)
         self.relations = RelationService(db, persons, relations, resolver)
-        self.wishes = WishService(db, resolver, wishes, notices)
+        self.wishes = WishService(db, resolver, wishes, notices, Guardianship(persons, relations))
         self.login_codes = LoginCodeService(db, persons, codes, mail_limit, emails, self.notifier,
                                             settings.family_code)
         self.sessions = SessionService(sessions)

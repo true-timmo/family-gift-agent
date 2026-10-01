@@ -186,3 +186,31 @@ def test_stammbaum_rein():
     assert tree.kins(3, 4) == {Kin.AUNT_UNCLE}
     assert tree.kins(5, 4) == {Kin.COUSIN}
     assert tree.kins(4, 1) == {Kin.GRANDCHILD}
+
+
+# --- Kinder ohne Login ---------------------------------------------------------
+
+def test_kind_ohne_login_anlegen_und_wuensche_eintragen(sippe):
+    r = sippe.call("Timmo", "person_anlegen", name="  Paul ")
+    assert r == {"angelegt": "Paul"}
+    assert sippe.person("Paul").email is None and sippe.status_of("Paul") == "offen"
+    assert sippe.call("Timmo", "person_anlegen", name="paul") == {"fehler": "Paul gibt es schon in der Familienliste."}
+    assert "fehler" in sippe.call("Timmo", "person_anlegen", name="123")
+    sippe.add_wish("Timmo", "Paul", "Feuerwehrauto")
+    assert sippe.titles("Katharina", "Paul") == ["Feuerwehrauto"]
+
+
+def test_eltern_verwalten_wuensche_ihrer_kinder(sippe):
+    sippe.c.family.add_without_login("Paul")
+    w = sippe.add_wish("Timmo", "Paul", "Feuerwehrauto")             # Onkel trägt ein
+    assert "fehler" in sippe.call("Uli", "wunsch_bearbeiten", wunsch_id=w, preis="20 €")   # noch nicht Vater
+    say(sippe, "Timmo", "Uli", "Vater", "Paul")
+    assert sippe.call("Uli", "wunsch_bearbeiten", wunsch_id=w, preis="20 €")["preis"] == "20 €"
+    assert "fehler" in sippe.call("Lisa", "wunsch_bearbeiten", wunsch_id=w, preis="1 €")   # andere weiterhin nicht
+    assert sippe.call("Uli", "wunsch_entfernen", wunsch_id=w)["entfernt"]
+
+
+def test_eltern_haben_keine_rechte_bei_registrierten_kindern(sippe):
+    say(sippe, "Timmo", "Ulrike", "Mutter", "Timmo")
+    w = sippe.add_wish("Timmo", "Timmo", "Buch")
+    assert "fehler" in sippe.call("Ulrike", "wunsch_entfernen", wunsch_id=w)

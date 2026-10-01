@@ -8,13 +8,15 @@ from ..domain.errors import ConflictError, PermissionDeniedError
 from ..domain.models import Actor, ListedWish, Reservation, Wish, WishDetails, WishList
 from ..storage import Database, WishRepository
 from .directory import RemovalNotices
-from .relations import PersonResolver
+from .relations import Guardianship, PersonResolver
 
 
 class WishService:
-    def __init__(self, db: Database, resolver: PersonResolver, wishes: WishRepository, notices: RemovalNotices):
+    def __init__(self, db: Database, resolver: PersonResolver, wishes: WishRepository, notices: RemovalNotices,
+                 guardians: Guardianship):
         self._db = db
         self._resolver = resolver
+        self._guardians = guardians
         self._wishes = wishes
         self._notices = notices
 
@@ -87,10 +89,10 @@ class WishService:
             self._notices.wish_removed(wish, removed_by=actor.name)
         return wish
 
-    @staticmethod
-    def _check_editable(wish: Wish, actor: Actor) -> None:
+    def _check_editable(self, wish: Wish, actor: Actor) -> None:
         if wish.is_deleted:
             raise ConflictError("Dieser Wunsch wurde schon entfernt.")
-        if not wish.editable_by(actor):
+        if not (wish.editable_by(actor) or self._guardians.is_guardian(actor.id, wish.person_id)):
             raise PermissionDeniedError(
-                "Diesen Wunsch kannst du nicht ändern – nur die Person selbst oder wer ihn eingetragen hat.")
+                "Diesen Wunsch kannst du nicht ändern – nur die Person selbst, wer ihn eingetragen hat "
+                "oder bei Kindern ohne eigenen Login die Eltern.")
