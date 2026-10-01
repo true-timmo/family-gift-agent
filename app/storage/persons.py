@@ -5,8 +5,8 @@ from ..domain.models import FamilyMember, MemberStatus, Person
 from .database import Database, now
 
 
-def _person(row: sqlite3.Row | None) -> Person | None:
-    return Person(row["id"], row["name"], row["email"]) if row else None
+def person_from_row(row: sqlite3.Row | None) -> Person | None:
+    return Person(row["id"], row["name"], row["email"], row["gender"]) if row else None
 
 
 class PersonRepository:
@@ -20,13 +20,13 @@ class PersonRepository:
                                 (name.strip(), email, now())).lastrowid
 
     def by_id(self, person_id: int) -> Person | None:
-        return _person(self._db.one("SELECT * FROM persons WHERE id = ?", (person_id,)))
+        return person_from_row(self._db.one("SELECT * FROM persons WHERE id = ?", (person_id,)))
 
     def by_name(self, name: str) -> Person | None:
-        return _person(self._db.one("SELECT * FROM persons WHERE name = ?", (name.strip(),)))
+        return person_from_row(self._db.one("SELECT * FROM persons WHERE name = ?", (name.strip(),)))
 
     def by_email(self, email: str) -> Person | None:
-        return _person(self._db.one("SELECT * FROM persons WHERE lower(email) = lower(?)", (email.strip(),)))
+        return person_from_row(self._db.one("SELECT * FROM persons WHERE lower(email) = lower(?)", (email.strip(),)))
 
     def require(self, name: str) -> Person:
         """Wie by_name, aber mit einer Fehlermeldung, die dem Modell beim Korrigieren hilft."""
@@ -36,7 +36,7 @@ class PersonRepository:
         raise NotFoundError(f"Ich kenne niemanden namens '{name}'. Bekannt sind: {known}.")
 
     def all(self) -> list[Person]:
-        return [_person(r) for r in self._db.all("SELECT * FROM persons ORDER BY name")]
+        return [person_from_row(r) for r in self._db.all("SELECT * FROM persons ORDER BY name")]
 
     def members(self) -> list[FamilyMember]:
         """Alle Personen mit Status registriert / eingeladen / offen."""
@@ -52,6 +52,9 @@ class PersonRepository:
 
     def set_email(self, person_id: int, email: str | None) -> None:
         self._db.execute("UPDATE persons SET email = ? WHERE id = ?", (email, person_id))
+
+    def set_gender(self, person_id: int, gender: str) -> None:
+        self._db.execute("UPDATE persons SET gender = ? WHERE id = ?", (gender, person_id))
 
     def delete(self, person_id: int) -> None:
         self._db.execute("DELETE FROM persons WHERE id = ?", (person_id,))

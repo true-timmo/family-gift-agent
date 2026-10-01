@@ -63,6 +63,17 @@ CREATE TABLE IF NOT EXISTS sessions (
     expires_at  INTEGER NOT NULL
 );
 
+-- Verwandtschaft: person ist <kind> von relative (siehe domain/kinship.py). Nur gespeicherte Angaben,
+-- alles Weitere wird abgeleitet.
+CREATE TABLE IF NOT EXISTS relations (
+    person_id    INTEGER NOT NULL REFERENCES persons(id),
+    relative_id  INTEGER NOT NULL REFERENCES persons(id),
+    kind         TEXT NOT NULL,
+    created_by   INTEGER REFERENCES persons(id),
+    created_at   INTEGER NOT NULL,
+    PRIMARY KEY (person_id, relative_id, kind)
+);
+
 CREATE TABLE IF NOT EXISTS chat_messages (
     id          INTEGER PRIMARY KEY,
     person_id   INTEGER NOT NULL REFERENCES persons(id),
@@ -86,7 +97,14 @@ class Database:
         self._conn.execute("PRAGMA foreign_keys = ON")
         self._conn.execute("PRAGMA journal_mode = WAL")
         self._conn.executescript(SCHEMA)
+        self._migrate()
         self._depth = 0
+
+    def _migrate(self) -> None:
+        """Ergänzt Spalten, die es in älteren Datenbanken noch nicht gibt."""
+        columns = {row["name"] for row in self._conn.execute("PRAGMA table_info(persons)")}
+        if "gender" not in columns:
+            self._conn.execute("ALTER TABLE persons ADD COLUMN gender TEXT")   # "w" / "m" / NULL
 
     def execute(self, sql: str, params: tuple = ()) -> sqlite3.Cursor:
         return self._conn.execute(sql, params)

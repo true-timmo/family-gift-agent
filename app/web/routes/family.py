@@ -16,8 +16,10 @@ log = logging.getLogger("uvicorn.error")
 
 @router.get("/familie")
 async def family(actor: Actor = Depends(current_actor), c: Container = Depends(container)):
-    # Nur Name + Status – keine Mail-Adressen, keine Wünsche
-    return [{"name": m.name, "status": m.status, "du": m.id == actor.id} for m in c.family.members()]
+    # Nur Name, Status und Verwandtschaft aus Sicht der angemeldeten Person – keine Mail-Adressen, keine Wünsche
+    relation = {r.person.id: " / ".join(r.names) for r in c.relations.relatives(actor.person)}
+    return [{"name": m.name, "status": m.status, "du": m.id == actor.id, "beziehung": relation.get(m.id)}
+            for m in c.family.members()]
 
 
 @router.post("/einladung", dependencies=[Depends(require_json)])

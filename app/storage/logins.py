@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 from ..domain.models import Person
 from .database import Database, now
+from .persons import person_from_row
 
 
 @dataclass(frozen=True)
@@ -70,7 +71,7 @@ class SessionRepository:
     def person(self, token_hash: str) -> Person | None:
         row = self._db.one("""SELECT p.* FROM sessions s JOIN persons p ON p.id = s.person_id
                               WHERE s.token_hash = ? AND s.expires_at > ?""", (token_hash, now()))
-        return Person(row["id"], row["name"], row["email"]) if row else None
+        return person_from_row(row)
 
     def delete(self, token_hash: str) -> None:
         self._db.execute("DELETE FROM sessions WHERE token_hash = ?", (token_hash,))

@@ -2,7 +2,7 @@
 from ..domain.errors import ConflictError, PermissionDeniedError
 from ..domain.models import FamilyMember, Person, PersonRemoval
 from ..storage import (ChatRepository, Database, InviteRepository, LoginCodeRepository, MailLog, PersonRepository,
-                       SessionRepository, WishRepository)
+                       RelationRepository, SessionRepository, WishRepository)
 from .directory import EmailDirectory, RemovalNotices
 
 
@@ -40,12 +40,12 @@ class PersonRemovalService:
     - Ihre Wünsche werden gelöscht; wer davon etwas reserviert hatte, wird benachrichtigt.
     - Ihre eigenen Reservierungen werden freigegeben (Geschenke sind wieder offen).
     - Wünsche und Einladungen, die sie für andere angelegt hat, bleiben – sie gelten dann als vom Admin.
-    - Sitzungen, Chatverlauf und Codes verschwinden.
+    - Sitzungen, Chatverlauf, Codes und Verwandtschaftsangaben verschwinden.
     """
 
     def __init__(self, db: Database, persons: PersonRepository, wishes: WishRepository, invites: InviteRepository,
                  codes: LoginCodeRepository, mail_log: MailLog, sessions: SessionRepository, chat: ChatRepository,
-                 notices: RemovalNotices):
+                 relations: RelationRepository, notices: RemovalNotices):
         self._db = db
         self._persons = persons
         self._wishes = wishes
@@ -54,6 +54,7 @@ class PersonRemovalService:
         self._mail_log = mail_log
         self._sessions = sessions
         self._chat = chat
+        self._relations = relations
         self._notices = notices
 
     def remove(self, admin: Person, name: str) -> PersonRemoval:
@@ -78,4 +79,5 @@ class PersonRemovalService:
         self._chat.clear(person.id)
         self._codes.delete(person.name)
         self._mail_log.delete_for(person.name)
+        self._relations.delete_all_for(person.id)
         self._persons.delete(person.id)

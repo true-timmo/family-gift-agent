@@ -6,19 +6,20 @@ from dataclasses import replace
 
 from ..domain.errors import ConflictError, PermissionDeniedError
 from ..domain.models import Actor, ListedWish, Reservation, Wish, WishDetails, WishList
-from ..storage import Database, PersonRepository, WishRepository
+from ..storage import Database, WishRepository
 from .directory import RemovalNotices
+from .relations import PersonResolver
 
 
 class WishService:
-    def __init__(self, db: Database, persons: PersonRepository, wishes: WishRepository, notices: RemovalNotices):
+    def __init__(self, db: Database, resolver: PersonResolver, wishes: WishRepository, notices: RemovalNotices):
         self._db = db
-        self._persons = persons
+        self._resolver = resolver
         self._wishes = wishes
         self._notices = notices
 
     def add(self, actor: Actor, person_name: str, details: WishDetails) -> Wish:
-        person = self._persons.require(person_name)
+        person = self._resolver.resolve(actor.person, person_name)
         wish_id = self._wishes.add(person.id, replace(details, title=details.title.strip()), created_by=actor.id)
         return self._wishes.require(wish_id)
 
@@ -29,7 +30,7 @@ class WishService:
         - Andere sehen den Status: offen, von dir reserviert oder besorgt (von jemand anderem).
           Von anderen reservierte Wünsche stehen am Ende.
         """
-        person = self._persons.require(person_name)
+        person = self._resolver.resolve(actor.person, person_name)
         wishes = self._wishes.active_of(person.id)
         if person.id == actor.id:
             return WishList(person, is_own=True, entries=[ListedWish(w) for w in wishes])

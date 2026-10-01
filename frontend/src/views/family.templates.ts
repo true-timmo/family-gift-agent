@@ -35,7 +35,8 @@ function member(m: Member, s: FamilyState, h: FamilyHandlers): TemplateResult {
   const invited = m.status === "eingeladen";
   return html`<li>
     <button @click=${() => h.ask(m)}>
-      <span>${m.du ? `${m.name} (du)` : m.name}</span><span class="badge ${cls}">${label}</span>
+      <span>${m.du ? `${m.name} (du)` : m.name}${m.beziehung ? html` <span class="relation">· ${m.beziehung}</span>` : nothing
+        }</span><span class="badge ${cls}">${label}</span>
     </button>
     ${m.status === "registriert" ? nothing : html`
       <button type="button" class="family-action" @click=${() => h.openInvite(m.name)}
