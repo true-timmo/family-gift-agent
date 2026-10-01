@@ -12,9 +12,10 @@ from .config import Settings
 from .domain.notifications import Notifier
 from .mail import BackgroundMailNotifier, ConsoleTransport, Mailer, MailTransport, SmtpTransport
 from .services import (AdminPolicy, EmailDirectory, FamilyService, InvitationService, LoginCodeService,
-                       MailRateLimiter, PersonRemovalService, RemovalNotices, SessionService, WishService)
+                       MailRateLimiter, PersonRemovalService, PersonResolver, RelationService, RemovalNotices,
+                       SessionService, WishService)
 from .storage import (ChatRepository, Database, InviteRepository, LoginCodeRepository, MailLog, PersonRepository,
-                      SessionRepository, WishRepository)
+                      RelationRepository, SessionRepository, WishRepository)
 
 log = logging.getLogger("uvicorn.error")
 
@@ -31,6 +32,7 @@ class Container:
         codes = LoginCodeRepository(db)
         mail_log = MailLog(db)
         sessions = SessionRepository(db)
+        relations = RelationRepository(db)
         self.chat_history = ChatRepository(db)
 
         transport = mail_transport or (ConsoleTransport() if settings.smtp.debug else SmtpTransport(settings.smtp))
@@ -42,14 +44,16 @@ class Container:
         notices = RemovalNotices(persons, self.notifier)
         self.admins = AdminPolicy(settings.admin_email, persons)
         self.family = FamilyService(persons, emails)
-        self.wishes = WishService(db, persons, wishes, notices)
+        resolver = PersonResolver(persons, relations)
+        self.relations = RelationService(db, persons, relations, resolver)
+        self.wishes = WishService(db, resolver, wishes, notices)
         self.login_codes = LoginCodeService(db, persons, codes, mail_limit, emails, self.notifier,
                                             settings.family_code)
         self.sessions = SessionService(sessions)
         self.invitations = InvitationService(db, persons, invites, mail_limit, emails, self.notifier)
         self.removals = PersonRemovalService(db, persons, wishes, invites, codes, mail_log, sessions,
-                                             self.chat_history, notices)
+                                             self.chat_history, relations, notices)
 
-        self.tools = ToolRegistry.standard(self.wishes, self.family)
+        self.tools = ToolRegistry.standard(self.wishes, self.family, self.relations)
         self.agent = ChatAgent(llm_client or ChatAgent.client_for(settings.llm), settings.llm, self.tools,
-                               self.chat_history, SystemPrompt(self.family))
+                               self.chat_history, SystemPrompt(self.family, self.relations))

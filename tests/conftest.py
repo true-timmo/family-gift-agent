@@ -29,14 +29,14 @@ class RecordingTransport:
 class Family:
     """Test-Familie: Mama, Papa und Lena mit Login, Oma ohne. Mama ist Admin (falls angefordert)."""
 
-    def __init__(self, path, **settings):
+    MEMBERS = (("Mama", "mama@example.de"), ("Papa", "papa@example.de"), ("Lena", "lena@example.de"), ("Oma", None))
+
+    def __init__(self, path, members=MEMBERS, **settings):
         self.notifier = RecordingNotifier()
         self.mails = RecordingTransport()
         self.c = Container(Settings(db_path=str(path), **settings), notifier=self.notifier, mail_transport=self.mails)
         self.db = self.c.database
-        self.ids = {name: self.c.family.add(name, email).id for name, email in
-                    (("Mama", "mama@example.de"), ("Papa", "papa@example.de"), ("Lena", "lena@example.de"),
-                     ("Oma", None))}
+        self.ids = {name: self.c.family.add(name, email).id for name, email in members}
 
     def person(self, name):
         return self.c.family.get(name)

@@ -6,6 +6,7 @@ export interface Member {
   name: string;
   status: MemberStatus;
   du: boolean;
+  beziehung: string | null; // aus Sicht der angemeldeten Person, z.B. "Mutter"
 }
 
 export interface ChatMessage {

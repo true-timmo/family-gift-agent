@@ -64,7 +64,7 @@ def test_familie_und_admin_rechte(fam, client):
     assert client.get("/api/familie").status_code == 401
     sign_in(fam, client, "Papa")
     family = client.get("/api/familie").json()
-    assert {"name": "Papa", "status": "registriert", "du": True} in family
+    assert {"name": "Papa", "status": "registriert", "du": True, "beziehung": None} in family
     assert post(client, "/api/admin/person-entfernen", name="Oma").status_code == 403
 
     sign_in(fam, client, "Mama")

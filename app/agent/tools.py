@@ -9,11 +9,18 @@ from typing import ClassVar, Iterable
 
 from ..domain.errors import DomainError
 from ..domain.models import Actor, Reservation
-from ..services import FamilyService, WishService
+from ..services import FamilyService, RelationService, WishService
 from . import presenter
 
 _WISH_ID = {"wunsch_id": {"type": "integer"}}
-_PERSON = {"person": {"type": "string", "description": "Name der Person"}}
+_PERSON = {"person": {"type": "string",
+                       "description": "Name der Person – oder wie die fragende Person sie nennt (z.B. 'Mama', 'Oma')"}}
+_RELATION = {
+    "person": {"type": "string", "description": "Um wen es geht (Name; bei 'ich' der eigene Name)"},
+    "beziehung": {"type": "string", "description": "z.B. Mutter, Vater, Schwester, Bruder, Tochter, Sohn, Partnerin, "
+                                                  "Oma, Opa, Tante, Onkel, Cousine, Cousin, Schwiegermutter, Schwager"},
+    "von": {"type": "string", "description": "Zu wem die Beziehung besteht (Name; bei 'meine …' der eigene Name)"},
+}
 _WISH_FIELDS = {
     "titel": {"type": "string", "description": "Kurzer Name des Geschenks"},
     "beschreibung": {"type": "string", "description": "Details wie Größe, Farbe, Modell"},
@@ -65,7 +72,8 @@ class ListPersons(Tool):
 class AddWish(WishTool):
     name = "wunsch_hinzufuegen"
     description = "Trägt einen Geschenkwunsch ein. Für eigene Wünsche den eigenen Namen als 'person' verwenden."
-    parameters = {"person": {"type": "string", "description": "Wer sich das wünscht (Name wie in der Personenliste)"},
+    parameters = {"person": {"type": "string", "description": "Wer sich das wünscht: Name wie in der Personenliste "
+                                                              "oder Verwandtschaftswort wie 'Mama'"},
                   **_WISH_FIELDS}
     required = ("person", "titel")
 
@@ -135,14 +143,55 @@ class RemoveWish(WishTool):
         return {"id": wish.id, "titel": wish.title, "entfernt": True}   # bewusst ohne „wer hatte reserviert“
 
 
+class RelationTool(Tool, ABC):
+    parameters = _RELATION
+    required = ("person", "beziehung", "von")
+
+    def __init__(self, relations: RelationService):
+        self._relations = relations
+
+
+class AddRelation(RelationTool):
+    name = "verwandtschaft_eintragen"
+    description = ("Speichert, wie zwei Familienmitglieder verwandt sind: „<person> ist <beziehung> von <von>“. "
+                   "Beispiel: „Katharina ist meine Schwester“ (Timmo schreibt) → person=Katharina, "
+                   "beziehung=Schwester, von=Timmo. Weitere Beziehungen leitet die App selbst ab.")
+
+    def run(self, actor: Actor, args: dict) -> dict:
+        change = self._relations.add(actor, args["person"], args["beziehung"], args["von"])
+        return {"gespeichert": change.statement, "war_schon_bekannt": change.known_before,
+                "daraus_folgt": change.derived}
+
+
+class RemoveRelation(RelationTool):
+    name = "verwandtschaft_entfernen"
+    description = "Entfernt eine falsch eingetragene Verwandtschaft („<person> ist <beziehung> von <von>“)."
+
+    def run(self, actor: Actor, args: dict) -> dict:
+        return {"entfernt": self._relations.remove(actor, args["person"], args["beziehung"], args["von"])}
+
+
+class ShowRelatives(RelationTool):
+    name = "verwandtschaft_anzeigen"
+    description = "Zeigt alle bekannten Verwandten einer Person und wie sie zu ihr stehen."
+    parameters = _PERSON
+    required = ("person",)
+
+    def run(self, actor: Actor, args: dict) -> dict:
+        person = self._relations.resolve(actor, args["person"])
+        return {"person": person.name, "verwandte": [{"name": r.person.name, "beziehung": " / ".join(r.names)}
+                                                     for r in self._relations.relatives(person)]}
+
+
 class ToolRegistry:
     def __init__(self, tools: Iterable[Tool]):
         self._tools = {tool.name: tool for tool in tools}
 
     @classmethod
-    def standard(cls, wishes: WishService, family: FamilyService) -> "ToolRegistry":
+    def standard(cls, wishes: WishService, family: FamilyService, relations: RelationService) -> "ToolRegistry":
         return cls([ListPersons(family), AddWish(wishes), ShowWishes(wishes), Reserve(wishes), Unreserve(wishes),
-                    MyReservations(wishes), EditWish(wishes), RemoveWish(wishes)])
+                    MyReservations(wishes), EditWish(wishes), RemoveWish(wishes),
+                    AddRelation(relations), RemoveRelation(relations), ShowRelatives(relations)])
 
     def schemas(self) -> list[dict]:
         return [tool.schema() for tool in self._tools.values()]

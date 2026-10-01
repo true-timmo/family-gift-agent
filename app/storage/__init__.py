@@ -4,7 +4,8 @@ from .database import Database
 from .invites import InviteRepository
 from .logins import LoginCodeRepository, MailLog, SessionRepository
 from .persons import PersonRepository
+from .relations import RelationRepository
 from .wishes import WishRepository
 
 __all__ = ["ChatRepository", "Database", "InviteRepository", "LoginCodeRepository", "MailLog",
-           "PersonRepository", "SessionRepository", "WishRepository"]
+           "PersonRepository", "RelationRepository", "SessionRepository", "WishRepository"]

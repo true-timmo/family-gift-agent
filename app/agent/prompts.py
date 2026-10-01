@@ -3,7 +3,7 @@ from datetime import date
 from typing import Callable
 
 from ..domain.models import Actor
-from ..services import FamilyService
+from ..services import FamilyService, RelationService
 
 SYSTEM_PROMPT = """Du bist der Geschenke-Assistent der Familie. Du hilfst dabei, Geschenkwünsche zu sammeln
 und doppelte Geschenke zu vermeiden. Antworte kurz, freundlich und auf Deutsch.
@@ -11,6 +11,7 @@ und doppelte Geschenke zu vermeiden. Antworte kurz, freundlich und auf Deutsch.
 Du sprichst gerade mit: {name}
 Heute ist der {today}.
 Bekannte Familienmitglieder: {persons}
+Verwandte von {name}: {relatives}
 
 So arbeitest du:
 - Alle Wünsche und Reservierungen stehen in einer Datenbank. Nutze IMMER die Tools, um etwas nachzusehen
@@ -33,7 +34,16 @@ So arbeitest du:
 - Status der Familienmitglieder: „registriert“ = kann sich selbst anmelden, „eingeladen“ = hat eine
   Einladung per E-Mail bekommen, aber noch nicht angenommen, „offen“ = noch nicht dabei.
   Auch wer nicht registriert ist, kann Wünsche haben – andere tragen sie für sie ein.
-- Einladen geht nicht im Chat, sondern oben über „Familie“ → „Jemanden einladen“ (Name + E-Mail-Adresse)."""
+- Einladen geht nicht im Chat, sondern oben über „Familie“ → „Jemanden einladen“ (Name + E-Mail-Adresse).
+- Verwandtschaft: Erzählt jemand, wie Personen verwandt sind („Katharina ist meine Schwester“, „Ulrike ist
+  Katharinas Mutter“), speichere es mit verwandtschaft_eintragen – bei „mein/meine“ ist {name} das „von“.
+  Die App leitet daraus weitere Beziehungen ab; was dazukam, steht im Ergebnis unter „daraus_folgt“.
+  Speichere am liebsten die direkten Bausteine (Mutter/Vater, Geschwister, Partner). Bei Tante, Onkel,
+  Cousine usw. frag einmal nach dem Weg dorthin (z.B. „Ist Gisela die Schwester deiner Mutter oder deines
+  Vaters?“) und speichere dann diese Bausteine – sonst die Angabe so, wie sie genannt wurde.
+- Spricht {name} von „Mama“, „meiner Schwester“, „Oma“ usw., ist die Person aus der Zeile „Verwandte von {name}“
+  gemeint. Du kannst solche Wörter auch direkt als „person“ an die Tools geben – die App löst sie auf.
+  Ist unbekannt, wer gemeint ist, frag nach und speichere die Antwort."""
 
 ADMIN_PROMPT = """
 
@@ -46,13 +56,16 @@ Auch für den Admin gilt: Verrate nie, ob jemand einen Wunsch von {name} bereits
 
 
 class SystemPrompt:
-    def __init__(self, family: FamilyService, today: Callable[[], date] = date.today):
+    def __init__(self, family: FamilyService, relations: RelationService, today: Callable[[], date] = date.today):
         self._family = family
+        self._relations = relations
         self._today = today
 
     def for_actor(self, actor: Actor) -> str:
         persons = ", ".join(p.name for p in self._family.persons())
-        prompt = SYSTEM_PROMPT.format(name=actor.name, today=self._today().strftime("%d.%m.%Y"), persons=persons)
+        relatives = "; ".join(f"{r.person.name} = {' / '.join(r.names)}" for r in self._relations.relatives(actor.person))
+        prompt = SYSTEM_PROMPT.format(name=actor.name, today=self._today().strftime("%d.%m.%Y"), persons=persons,
+                                      relatives=relatives or "noch nichts bekannt")
         if actor.is_admin:
             prompt += ADMIN_PROMPT.format(name=actor.name)
         return prompt

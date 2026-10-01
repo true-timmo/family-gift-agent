@@ -41,7 +41,7 @@ def run(agent, actor, text):
 
 def agent_for(fam, llm, fallback=()):
     settings = LlmSettings(model="test/model", fallback_models=fallback)
-    return ChatAgent(llm, settings, fam.c.tools, fam.c.chat_history, SystemPrompt(fam.c.family))
+    return ChatAgent(llm, settings, fam.c.tools, fam.c.chat_history, SystemPrompt(fam.c.family, fam.c.relations))
 
 
 def test_tool_aufruf_und_antwort(fam):

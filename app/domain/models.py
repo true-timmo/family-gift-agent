@@ -8,6 +8,7 @@ class Person:
     id: int
     name: str
     email: str | None = None      # None = kein eigener Login (z.B. Kinder, Oma ohne Handy)
+    gender: str | None = None     # "w" / "m" – für Bezeichnungen wie Mutter/Vater; None = unbekannt
 
     @property
     def is_registered(self) -> bool:
