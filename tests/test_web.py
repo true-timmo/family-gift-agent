@@ -72,3 +72,12 @@ def test_familie_und_admin_rechte(fam, client):
     r = post(client, "/api/admin/person-entfernen", name="Oma")
     assert r.json() == {"name": "Oma", "wuensche_geloescht": 0, "reservierungen_freigegeben": 0}
     assert post(client, "/api/admin/person-entfernen", name="Mama").status_code == 403
+
+
+def test_person_ohne_login_anlegen(fam, client):
+    assert post(client, "/api/person", name="Paul").status_code == 401
+    sign_in(fam, client, "Lena")
+    assert post(client, "/api/person", name="Paul").json() == {"name": "Paul"}
+    assert post(client, "/api/person", name="paul").status_code == 409
+    assert post(client, "/api/person", name="!").status_code == 400
+    assert {"name": "Paul", "status": "offen", "du": False, "beziehung": None} in client.get("/api/familie").json()

@@ -2,7 +2,7 @@
 import type { Api, Member } from "../api.ts";
 import { focus, formValues } from "../dom.ts";
 import { FormView } from "../view.ts";
-import { type FamilyHandlers, type FamilyState, familyTemplate } from "./family.templates.ts";
+import { type FamilyHandlers, type FamilyState, familyTemplate, type PersonForm } from "./family.templates.ts";
 
 export class FamilyPanel extends FormView<FamilyState> {
   private readonly api: Api;
@@ -12,7 +12,7 @@ export class FamilyPanel extends FormView<FamilyState> {
 
   /** onAsk: Frage für den Chat, wenn jemand auf einen Namen tippt. */
   constructor(root: HTMLElement, toggle: HTMLButtonElement, api: Api, onAsk: (question: string) => void) {
-    super(root, { members: [], isAdmin: false, invite: null, busy: false, feedback: null });
+    super(root, { members: [], isAdmin: false, form: null, busy: false, feedback: null });
     this.api = api;
     this.toggle = toggle;
     this.onAsk = onAsk;
@@ -24,7 +24,7 @@ export class FamilyPanel extends FormView<FamilyState> {
   }
 
   async open(): Promise<void> {
-    this.update({ invite: null, feedback: null });
+    this.update({ form: null, feedback: null });
     await this.reload();
     this.setOpen(true);
   }
@@ -47,9 +47,16 @@ export class FamilyPanel extends FormView<FamilyState> {
     if (members) this.update({ members });
   }
 
-  private openInvite(name = ""): void {
-    this.update({ invite: { name, key: ++this.formKey }, feedback: null });
+  private openForm(mode: PersonForm["mode"], name = ""): void {
+    this.update({ form: { mode, name, key: ++this.formKey }, feedback: null });
     focus(this.root, name ? ".invite-form input[name=email]" : ".invite-form input[name=name]");
+  }
+
+  /** Nach Erfolg: Liste neu laden, leeres Formular derselben Art für die nächste Person. */
+  private async done(mode: PersonForm["mode"], text: string): Promise<void> {
+    this.update({ form: { mode, name: "", key: ++this.formKey } });
+    await this.reload();
+    this.say("ok", text);
   }
 
   private readonly handlers: FamilyHandlers = {
@@ -57,15 +64,18 @@ export class FamilyPanel extends FormView<FamilyState> {
       this.close();
       this.onAsk(m.du ? "Zeig mir meine Wunschliste als Tabelle" : `Zeig mir die Wünsche von ${m.name} als Tabelle`);
     },
-    openInvite: (name?: string) => this.openInvite(name),
-    invite: async (e) => {
+    openForm: (mode, name) => this.openForm(mode, name),
+    submit: async (e) => {
       const { name, email } = formValues(e);
-      const existing = !!this.state.invite?.name;
-      const res = await this.run(() => this.api.invite(name, email, existing));
-      if (!res) return;
-      this.update({ invite: { name: "", key: ++this.formKey } }); // leeres Formular für die nächste Einladung
-      await this.reload();
-      this.say("ok", `Einladung an ${res.name} (${res.email}) ist unterwegs.`);
+      const form = this.state.form;
+      if (form?.mode === "invite") {
+        const res = await this.run(() => this.api.invite(name, email, !!form.name));
+        if (res) await this.done("invite", `Einladung an ${res.name} (${res.email}) ist unterwegs.`);
+      } else {
+        const res = await this.run(() => this.api.addPerson(name));
+        if (res) await this.done("add", `${res.name} steht jetzt in der Familienliste. Wünsche für ${res.name} ` +
+          `kannst du im Chat eintragen.`);
+      }
     },
     remove: async (name: string) => {
       const ok = confirm(`${name} wirklich aus der Familienliste entfernen?\n\n` +

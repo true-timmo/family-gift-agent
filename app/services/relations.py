@@ -65,6 +65,20 @@ class PersonResolver:
                             f"„Ulrike ist meine Mutter“.")
 
 
+class Guardianship:
+    """Eltern verwalten die Wunschliste ihrer Kinder, solange diese keinen eigenen Login haben."""
+
+    def __init__(self, persons: PersonRepository, relations: RelationRepository):
+        self._persons = persons
+        self._relations = relations
+
+    def is_guardian(self, guardian_id: int, person_id: int) -> bool:
+        person = self._persons.by_id(person_id)
+        if not person or person.is_registered:
+            return False
+        return Kin.PARENT in FamilyTree(self._relations.all()).kins(guardian_id, person_id)
+
+
 class RelationService:
     def __init__(self, db: Database, persons: PersonRepository, relations: RelationRepository,
                  resolver: PersonResolver):
