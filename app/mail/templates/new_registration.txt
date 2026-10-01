@@ -1,0 +1,8 @@
+{% extends "layout.txt" %}
+{% block body %}
+{{ name }} hat sich gerade registriert ({{ how }}).
+
+Falls du die Person nicht kennst, kannst du den Zugang sperren:
+  docker compose exec agent python -m app.cli email-setzen "{{ name }}" --entfernen
+  docker compose exec agent python -m app.cli abmelden "{{ name }}"
+{% endblock %}

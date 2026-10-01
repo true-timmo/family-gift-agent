@@ -1,0 +1,8 @@
+{% extends "layout.html" %}
+{% block body %}
+<p>Hallo {{ recipient_name }},</p>
+<p><strong>{{ removed_by }}</strong> hat <strong>„{{ title }}“</strong> {{ where }} genommen.
+Du hattest dieses Geschenk reserviert.</p>
+<p>Falls du es schon gekauft hast: Vielleicht lässt es sich zurückgeben
+oder passt zu einem anderen Anlass.</p>
+{% endblock %}

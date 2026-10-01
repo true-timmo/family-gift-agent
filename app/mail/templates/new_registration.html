@@ -1,0 +1,7 @@
+{% extends "layout.html" %}
+{% block body %}
+<p><strong>{{ name }}</strong> hat sich gerade registriert ({{ how }}).</p>
+<p style="color:#7a716a;font-size:14px">Falls du die Person nicht kennst, kannst du den Zugang sperren:<br>
+<code>app.cli email-setzen "{{ name }}" --entfernen</code><br>
+<code>app.cli abmelden "{{ name }}"</code></p>
+{% endblock %}

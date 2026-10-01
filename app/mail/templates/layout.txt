@@ -1,0 +1,4 @@
+{% filter trim %}{% block body %}{% endblock %}{% endfilter %}
+
+
+{{ app_url }}

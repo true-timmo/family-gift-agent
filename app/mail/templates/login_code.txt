@@ -1,0 +1,14 @@
+{% extends "layout.txt" %}
+{% block body %}
+Hallo {{ name }},
+
+dein Anmeldecode lautet:
+
+    {{ code }}
+
+Er ist {{ minutes }} Minuten gültig.
+
+Dein Name zum Anmelden: {{ name }}
+
+Falls du dich nicht angemeldet hast, kannst du diese Mail einfach ignorieren.
+{% endblock %}

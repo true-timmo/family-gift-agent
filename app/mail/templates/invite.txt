@@ -1,0 +1,13 @@
+{% extends "layout.txt" %}
+{% block body %}
+Hallo {{ name }},
+
+{{ inviter }} hat dich zur Geschenke-Liste der Familie eingeladen.
+Dort sammeln wir Geschenkwünsche – damit niemand etwas doppelt schenkt.
+
+Tippe auf diesen Link, um die Einladung anzunehmen:
+{{ link }}
+
+Dein Name zum Anmelden: {{ name }}
+Die Einladung gilt {{ days }} Tage.
+{% endblock %}
