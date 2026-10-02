@@ -23,9 +23,10 @@ async def family(actor: Actor = Depends(current_actor), c: Container = Depends(c
 
 
 @router.post("/einladung", dependencies=[Depends(require_json)])
-async def invite(data: InvitationIn, actor: Actor = Depends(current_actor), c: Container = Depends(container)):
+async def invite(data: InvitationIn, admin: Actor = Depends(current_admin), c: Container = Depends(container)):
+    """Einladen per Mail – nur der Admin; alle anderen fragen ihn (z.B. über den Chat)."""
     email = email_address(data.email)
-    issued = c.invitations.invite(actor.person, person_name(data.name), email, existing=data.bestehend)
+    issued = c.invitations.invite(admin.person, person_name(data.name), email)
     async with mail_delivery("Die Einladung", email):
         await c.mailer.send_invite(issued, c.invitations.VALID_DAYS)
     return {"name": issued.name, "email": email}

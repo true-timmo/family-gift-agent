@@ -5,8 +5,8 @@ from app.domain.errors import ConflictError, NotFoundError, RateLimitError
 from app.domain.notifications import NewRegistration
 
 
-def invite(fam, inviter, name, email, existing=False):
-    return fam.c.invitations.invite(fam.person(inviter), name, email, existing=existing)
+def invite(fam, inviter, name, email):
+    return fam.c.invitations.invite(fam.person(inviter), name, email)
 
 
 def test_einladung_neue_person(fam):
@@ -39,9 +39,9 @@ def test_einladung_abgelaufen(fam):
 
 
 def test_einladung_korrigiert_falsche_adresse(fam):
-    alt = invite(fam, "Mama", "Oma", "oma@tippfehler.de", existing=True).token
+    alt = invite(fam, "Mama", "Oma", "oma@tippfehler.de").token
     fam.reset_mail_limit()
-    neu = invite(fam, "Mama", "oma", "oma@example.de", existing=True).token
+    neu = invite(fam, "Mama", "oma", "oma@example.de").token
     assert fam.c.invitations.lookup(alt) is None                       # alter Link ungültig
     oma = fam.c.invitations.accept(neu)
     assert oma.id == fam.ids["Oma"] and oma.email == "oma@example.de"  # bestehende Person übernommen
@@ -63,14 +63,13 @@ def test_einladung_nochmal_schicken(fam):
     assert fam.c.invitations.resend("Lena") is None                    # registriert → keine offene Einladung
 
 
-def test_neue_einladung_mit_vorhandenem_namen_abgelehnt(fam):
-    with pytest.raises(ConflictError, match="Oma gibt es schon"):            # offen, ohne Login
-        invite(fam, "Mama", "oma", "oma@example.de")
-    invite(fam, "Mama", "Gisela", "gisela@example.de")
-    with pytest.raises(ConflictError, match="schon eingeladen"):              # offene Einladung
-        invite(fam, "Papa", "Gisela", "gisela2@example.de")
-    with pytest.raises(NotFoundError, match="gibt es nicht"):                 # „Erneut“ für Unbekannte
-        invite(fam, "Papa", "Unbekannt", "u@example.de", existing=True)
+def test_vorhandene_person_ohne_login_wird_eingeladen(fam):
+    fam.add_wish("Papa", "Oma", "Wolldecke")
+    count = len(fam.c.family.persons())
+    issued = invite(fam, "Mama", "oma", "oma@example.de")                    # Groß/klein egal
+    assert issued.name == "Oma" and len(fam.c.family.persons()) == count     # keine neue Person
+    fam.c.invitations.accept(issued.token)
+    assert fam.titles("Papa", "Oma") == ["Wolldecke"]                         # Liste übernommen
 
 
 def test_mailadresse_nur_einmal(fam):
@@ -78,9 +77,9 @@ def test_mailadresse_nur_einmal(fam):
         invite(fam, "Papa", "Gisela", "MAMA@Example.de")                      # Groß/klein egal
     invite(fam, "Papa", "Gisela", "gisela@example.de")
     with pytest.raises(ConflictError, match="gehört schon zu Gisela"):       # offene Einladung
-        invite(fam, "Papa", "Oma", "gisela@example.de", existing=True)
+        invite(fam, "Papa", "Oma", "gisela@example.de")
     fam.reset_mail_limit()
-    invite(fam, "Papa", "Gisela", "gisela@example.de", existing=True)        # gleiche Person: ok
+    invite(fam, "Papa", "Gisela", "gisela@example.de")        # gleiche Person: ok
     with pytest.raises(ConflictError, match="gehört schon zu Papa"):
         fam.c.family.set_email("Oma", "papa@example.de")
 

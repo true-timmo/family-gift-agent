@@ -1,4 +1,4 @@
-// Familie: wer ist dabei? Einladen per Mail, als Admin Personen entfernen.
+// Familie: wer ist dabei? Jemanden hinzufügen; als Admin per Mail einladen und Personen entfernen.
 import type { Api, Member } from "../api.ts";
 import { focus, formValues } from "../dom.ts";
 import { FormView } from "../view.ts";
@@ -12,15 +12,17 @@ export class FamilyPanel extends FormView<FamilyState> {
 
   /** onAsk: Frage für den Chat, wenn jemand auf einen Namen tippt. */
   constructor(root: HTMLElement, toggle: HTMLButtonElement, api: Api, onAsk: (question: string) => void) {
-    super(root, { members: [], isAdmin: false, form: null, busy: false, feedback: null });
+    super(root, { members: [], adminMode: false, form: null, busy: false, feedback: null });
     this.api = api;
     this.toggle = toggle;
     this.onAsk = onAsk;
     toggle.addEventListener("click", () => (this.root.hidden ? this.open() : this.close()));
   }
 
-  setAdmin(isAdmin: boolean): void {
-    this.state = { ...this.state, isAdmin };
+  /** Admin-Funktionen ein-/ausblenden (Schalter im Kopf). */
+  setAdminMode(adminMode: boolean): void {
+    const form = adminMode || this.state.form?.mode !== "invite" ? this.state.form : null;
+    this.update({ adminMode, form });
   }
 
   async open(): Promise<void> {
@@ -47,14 +49,14 @@ export class FamilyPanel extends FormView<FamilyState> {
     if (members) this.update({ members });
   }
 
-  private openForm(mode: PersonForm["mode"], name = ""): void {
-    this.update({ form: { mode, name, key: ++this.formKey }, feedback: null });
-    focus(this.root, name ? ".invite-form input[name=email]" : ".invite-form input[name=name]");
+  private openForm(mode: PersonForm["mode"]): void {
+    this.update({ form: { mode, key: ++this.formKey }, feedback: null });
+    focus(this.root, ".invite-form input[name=name]");
   }
 
   /** Nach Erfolg: Liste neu laden, leeres Formular derselben Art für die nächste Person. */
   private async done(mode: PersonForm["mode"], text: string): Promise<void> {
-    this.update({ form: { mode, name: "", key: ++this.formKey } });
+    this.update({ form: { mode, key: ++this.formKey } });
     await this.reload();
     this.say("ok", text);
   }
@@ -64,12 +66,12 @@ export class FamilyPanel extends FormView<FamilyState> {
       this.close();
       this.onAsk(m.du ? "Zeig mir meine Wunschliste als Tabelle" : `Zeig mir die Wünsche von ${m.name} als Tabelle`);
     },
-    openForm: (mode, name) => this.openForm(mode, name),
+    openForm: (mode) => this.openForm(mode),
     submit: async (e) => {
       const { name, email } = formValues(e);
       const form = this.state.form;
       if (form?.mode === "invite") {
-        const res = await this.run(() => this.api.invite(name, email, !!form.name));
+        const res = await this.run(() => this.api.invite(name, email));
         if (res) await this.done("invite", `Einladung an ${res.name} (${res.email}) ist unterwegs.`);
       } else {
         const res = await this.run(() => this.api.addPerson(name));

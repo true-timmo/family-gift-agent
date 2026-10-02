@@ -1,5 +1,6 @@
 // Einstieg: verbindet die Views und schaltet zwischen Anmeldung und Chat um.
 import { Api } from "./api.ts";
+import { AdminSwitch } from "./admin-mode.ts";
 import { byId } from "./dom.ts";
 import { initHelpDialogs } from "./help.ts";
 import { ChatView } from "./views/chat.ts";
@@ -19,6 +20,8 @@ class App {
   }, this.api);
   private readonly family = new FamilyPanel(byId("family"), byId<HTMLButtonElement>("family-btn"), this.api,
     (question) => this.chat.setDraft(question));
+  private readonly adminSwitch = new AdminSwitch(byId<HTMLButtonElement>("admin-toggle"),
+    (on) => this.family.setAdminMode(on));
 
   constructor() {
     initHelpDialogs();
@@ -38,8 +41,8 @@ class App {
 
   private async showChat(): Promise<void> {
     const me = await this.api.me();
-    byId("who").textContent = me.name + (me.admin ? " · Admin" : "");
-    this.family.setAdmin(me.admin);
+    byId("who").textContent = me.name;
+    this.adminSwitch.setAvailable(me.admin);
     this.family.close();
     this.switchTo("chat");
     this.chat.load(me.verlauf);

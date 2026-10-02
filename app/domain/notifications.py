@@ -20,7 +20,15 @@ class NewRegistration:
     invited_by: str | None = None    # None = per Familien-Code registriert
 
 
-Notification = WishRemoved | NewRegistration
+@dataclass(frozen=True)
+class AdminMessage:
+    """Nachricht eines Familienmitglieds an den Admin (aus dem Chat)."""
+    sender: str
+    sender_email: str | None     # für „Antworten“ in der Mail; None = Person ohne eigene Adresse
+    text: str
+
+
+Notification = WishRemoved | NewRegistration | AdminMessage
 
 
 class Notifier(Protocol):

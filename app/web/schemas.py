@@ -21,7 +21,6 @@ class TokenIn(BaseModel):
 
 class InvitationIn(NameIn):
     email: str = Field(max_length=200)
-    bestehend: bool = False      # True = „Einladen“/„Erneut“ bei einer vorhandenen Person in der Liste
 
 
 class ChatIn(BaseModel):

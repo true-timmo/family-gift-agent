@@ -10,7 +10,7 @@ from typing import ClassVar, Iterable
 from ..domain.errors import DomainError
 from ..domain.models import Actor, Reservation
 from ..domain.values import person_name
-from ..services import FamilyService, RelationService, WishService
+from ..services import AdminContact, FamilyService, RelationService, WishService
 from . import presenter
 
 _WISH_ID = {"wunsch_id": {"type": "integer"}}
@@ -74,7 +74,7 @@ class AddPerson(Tool):
     name = "person_anlegen"
     description = ("Legt ein Familienmitglied OHNE eigenen Login an, z.B. ein Kind ohne E-Mail-Adresse – danach kann "
                    "man Wünsche für es eintragen. Vorher kurz nachfragen, ob die Person wirklich neu ist (Tippfehler?). "
-                   "Wer eine E-Mail-Adresse hat, wird besser eingeladen (Familie → Jemanden einladen).")
+                   "Wer eine E-Mail-Adresse hat, lädt der Admin besser per Mail ein.")
     parameters = {"name": {"type": "string", "description": "Vorname, so wie ihn alle in der Familie kennen"}}
     required = ("name",)
 
@@ -199,15 +199,31 @@ class ShowRelatives(RelationTool):
                                                      for r in self._relations.relatives(person)]}
 
 
+class ContactAdmin(Tool):
+    name = "admin_kontaktieren"
+    description = ("Schickt dem Admin eine Nachricht per E-Mail, z.B. „Bitte lade Gisela ein (gisela@…)“ oder ein "
+                   "Problem. Vorher den Text kurz zeigen und bestätigen lassen.")
+    parameters = {"nachricht": {"type": "string", "description": "Die Nachricht, in der Ich-Form der fragenden Person"}}
+    required = ("nachricht",)
+
+    def __init__(self, contact: AdminContact):
+        self._contact = contact
+
+    def run(self, actor: Actor, args: dict) -> dict:
+        return {"gesendet_an": self._contact.send(actor, str(args["nachricht"]))}
+
+
 class ToolRegistry:
     def __init__(self, tools: Iterable[Tool]):
         self._tools = {tool.name: tool for tool in tools}
 
     @classmethod
-    def standard(cls, wishes: WishService, family: FamilyService, relations: RelationService) -> "ToolRegistry":
+    def standard(cls, wishes: WishService, family: FamilyService, relations: RelationService,
+                 contact: AdminContact) -> "ToolRegistry":
         return cls([ListPersons(family), AddPerson(family), AddWish(wishes), ShowWishes(wishes), Reserve(wishes), Unreserve(wishes),
                     MyReservations(wishes), EditWish(wishes), RemoveWish(wishes),
-                    AddRelation(relations), RemoveRelation(relations), ShowRelatives(relations)])
+                    AddRelation(relations), RemoveRelation(relations), ShowRelatives(relations),
+                    ContactAdmin(contact)])
 
     def schemas(self) -> list[dict]:
         return [tool.schema() for tool in self._tools.values()]

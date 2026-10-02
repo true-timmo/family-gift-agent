@@ -25,16 +25,17 @@ class InvitationService:
         self._emails = emails
         self._notifier = notifier
 
-    def invite(self, inviter: Person, name: str, email: str, existing: bool = False) -> IssuedInvite:
-        """Lädt `name` mit `email` ein.
+    def invite(self, inviter: Person, name: str, email: str) -> IssuedInvite:
+        """Lädt `name` mit `email` ein (nur der Admin – das prüft der Aufrufer).
 
-        - existing=False („Jemanden einladen“): nur für NEUE Namen – ein vorhandener Name ist ein Fehler.
-        - existing=True („Einladen“/„Erneut“ in der Liste): für vorhandene, noch nicht registrierte Personen.
-          Eine offene Einladung wird dabei ersetzt – so lässt sich eine falsch getippte Adresse korrigieren.
+        Gibt es die Person schon ohne Login (z.B. ein Kind, für das andere Wünsche eintragen), wird genau sie
+        eingeladen und übernimmt später ihre Liste. Eine offene Einladung wird ersetzt – so lässt sich eine
+        falsch getippte Adresse korrigieren.
         """
         with self._db.transaction():
             person = self._persons.by_name(name)
-            self._check_invitable(person, name, existing)
+            if person and person.email:
+                raise ConflictError(f"{person.name} ist schon registriert und kann sich direkt mit dem Namen anmelden.")
             if owner := self._emails.owner(email, person.id if person else None):
                 raise ConflictError(f"Diese E-Mail-Adresse gehört schon zu {owner}.")
             if self._invites.count_sent_by(inviter.id, now() - DAY) >= self.MAX_PER_DAY:
@@ -44,18 +45,6 @@ class InvitationService:
             self._mail_limit.register_send(person.name)
             self._invites.delete_open_for(person.id)
             return self._issue(person, email, inviter)
-
-    def _check_invitable(self, person: Person | None, name: str, existing: bool) -> None:
-        if person and person.email:
-            raise ConflictError(f"{person.name} ist schon registriert und kann sich direkt mit dem Namen anmelden.")
-        if person and not existing:
-            hint = ("ist schon eingeladen. Zum erneuten Einladen in der Liste auf „Erneut“ tippen."
-                    if self._invites.pending_for(person.name) else
-                    "gibt es schon. Zum Einladen in der Liste auf „Einladen“ tippen – "
-                    "oder einen anderen Namen wählen, falls es jemand anderes ist.")
-            raise ConflictError(f"{person.name} {hint}")
-        if existing and not person:
-            raise NotFoundError(f"{name} gibt es nicht.")
 
     def resend(self, name: str) -> IssuedInvite | None:
         """Neuer Link für eine offene Einladung (z.B. Mail gelöscht). None, wenn es keine gibt."""

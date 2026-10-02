@@ -77,8 +77,8 @@ export class Api {
 
   // --- Familie ---
   family() { return this.get<Member[]>("/api/familie"); }
-  invite(name: string, email: string, bestehend: boolean) {
-    return this.post<{ name: string; email: string }>("/api/einladung", { name, email, bestehend });
+  invite(name: string, email: string) {
+    return this.post<{ name: string; email: string }>("/api/einladung", { name, email });
   }
   addPerson(name: string) { return this.post<{ name: string }>("/api/person", { name }); }
   removePerson(name: string) { return this.post<Removal>("/api/admin/person-entfernen", { name }); }

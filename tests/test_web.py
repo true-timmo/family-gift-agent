@@ -81,3 +81,11 @@ def test_person_ohne_login_anlegen(fam, client):
     assert post(client, "/api/person", name="paul").status_code == 409
     assert post(client, "/api/person", name="!").status_code == 400
     assert {"name": "Paul", "status": "offen", "du": False, "beziehung": None} in client.get("/api/familie").json()
+
+
+def test_einladen_nur_admin(fam, client):
+    sign_in(fam, client, "Papa")
+    assert post(client, "/api/einladung", name="Gisela", email="g@example.de").status_code == 403
+    sign_in(fam, client, "Mama")
+    assert post(client, "/api/einladung", name="Oma", email="oma@example.de").json() == \
+        {"name": "Oma", "email": "oma@example.de"}

@@ -11,7 +11,7 @@ from .agent import ChatAgent, SystemPrompt, ToolRegistry
 from .config import Settings
 from .domain.notifications import Notifier
 from .mail import BackgroundMailNotifier, ConsoleTransport, Mailer, MailTransport, SmtpTransport
-from .services import (AdminPolicy, EmailDirectory, FamilyService, InvitationService, LoginCodeService,
+from .services import (AdminContact, AdminPolicy, EmailDirectory, FamilyService, InvitationService, LoginCodeService,
                        MailRateLimiter, Guardianship, PersonRemovalService, PersonResolver, RelationService, RemovalNotices,
                        SessionService, WishService)
 from .storage import (ChatRepository, Database, InviteRepository, LoginCodeRepository, MailLog, PersonRepository,
@@ -54,6 +54,8 @@ class Container:
         self.removals = PersonRemovalService(db, persons, wishes, invites, codes, mail_log, sessions,
                                              self.chat_history, relations, notices)
 
-        self.tools = ToolRegistry.standard(self.wishes, self.family, self.relations)
+        self.admin_contact = AdminContact(self.admins, mail_limit, self.notifier)
+
+        self.tools = ToolRegistry.standard(self.wishes, self.family, self.relations, self.admin_contact)
         self.agent = ChatAgent(llm_client or ChatAgent.client_for(settings.llm), settings.llm, self.tools,
-                               self.chat_history, SystemPrompt(self.family, self.relations))
+                               self.chat_history, SystemPrompt(self.family, self.relations, self.admins))
