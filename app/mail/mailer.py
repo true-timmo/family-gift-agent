@@ -1,11 +1,12 @@
 """Die Mails der Anwendung. Texte stehen in templates/ – je Mail eine .txt- und eine .html-Fassung."""
+from datetime import datetime
 from email.message import EmailMessage
 from email.utils import formataddr, make_msgid
 
 from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescape
 
 from ..domain.models import IssuedInvite
-from ..domain.notifications import AdminMessage, NewRegistration, Notification, WishRemoved
+from ..domain.notifications import AdminMessage, ApiKeyIssued, NewRegistration, Notification, WishRemoved
 from .transport import MailTransport
 
 
@@ -40,6 +41,8 @@ class Mailer:
                 await self._send_new_registration(notification)
             case AdminMessage():
                 await self._send_admin_message(notification)
+            case ApiKeyIssued():
+                await self._send_api_key(notification)
 
     async def _send_wish_removed(self, n: WishRemoved) -> None:
         where = ("von der eigenen Wunschliste" if n.wished_by == n.removed_by
@@ -57,6 +60,12 @@ class Mailer:
         if self._admin_email:
             await self._send(self._admin_email, f"Nachricht von {n.sender}", "admin_message", reply_to=n.sender_email,
                              sender=n.sender, text=n.text)
+
+    async def _send_api_key(self, n: ApiKeyIssued) -> None:
+        endpoint = f"{self._app_url}/mcp"
+        await self._send(n.recipient_email, "Dein KI-Zugang zur Geschenke-Liste", "api_key", name=n.recipient_name,
+                         key=n.key, endpoint=endpoint, secret_url=f"{endpoint}/{n.key}",
+                         valid_until=datetime.fromtimestamp(n.expires_at).strftime("%d.%m.%Y"))
 
     async def _send(self, to: str, subject: str, template: str, reply_to: str | None = None, **context) -> None:
         context |= {"app_url": self._app_url, "reply_to": reply_to}

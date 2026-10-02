@@ -24,6 +24,13 @@ services:
       - traefik.http.routers.geschenke.entrypoints=websecure
       - traefik.http.routers.geschenke.middlewares=geschenke-ratelimit
       - traefik.http.services.geschenke.loadbalancer.server.port=8000
+      # MCP für eigene KI-Assistenten: eigener Router OHNE Zugriffslog – manche Programme tragen den
+      # API-Schlüssel in der Adresse (/mcp/<Schlüssel>), der soll nicht in den Traefik-Logs landen
+      - traefik.http.routers.geschenke-mcp.rule=Host(`geschenke.nordhain-gmbh.de`) && PathPrefix(`/mcp`)
+      - traefik.http.routers.geschenke-mcp.entrypoints=websecure
+      - traefik.http.routers.geschenke-mcp.middlewares=geschenke-ratelimit
+      - traefik.http.routers.geschenke-mcp.service=geschenke
+      - traefik.http.routers.geschenke-mcp.observability.accessLogs=false
       # Begrenzt Anfragen pro Besucher-IP (schützt vor Missbrauch und API-Kosten)
       - traefik.http.middlewares.geschenke-ratelimit.ratelimit.average=20
       - traefik.http.middlewares.geschenke-ratelimit.ratelimit.period=1m

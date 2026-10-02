@@ -21,6 +21,18 @@ fragen nach den Wünschen anderer („Was wünscht sich Mama?“) und reserviere
 Die Regeln (Reservierung, Überraschungsschutz, Berechtigungen) stehen im Code (`app/services/`),
 nicht im Prompt – das Modell ruft nur Tools auf und kann sie nicht umgehen.
 
+## Eigene KI anbinden (MCP)
+
+Registrierte Familienmitglieder können die Wunschliste als **MCP-Server** in ihren eigenen KI-Assistenten
+einbinden (Claude, ChatGPT, Cursor …). Den Zugang gibt es auf Nachfrage im Chat („Ich möchte einen MCP-Zugang“):
+Der API-Schlüssel kommt **nur per E-Mail** (nie in den Chat), gilt 30 Tage (`API_KEY_DAYS`) und handelt mit
+genau den Rechten seiner Besitzerin – Überraschungsschutz inklusive. Sperren: im Chat „Sperre meine KI-Zugänge“
+oder `app.cli abmelden "<Name>"`.
+
+- `POST /mcp` mit Header `Authorization: Bearer <Schlüssel>` (empfohlen)
+- `POST /mcp/<Schlüssel>` für Programme, die nur eine Adresse kennen; der Schlüssel wird im Log geschwärzt,
+  der Traefik-Router für `/mcp` schreibt kein Zugriffslog
+
 ## Aufbau
 
 ```

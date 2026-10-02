@@ -1,0 +1,30 @@
+{% extends "layout.txt" %}
+{% block body %}
+Hallo {{ name }},
+
+hier ist dein persönlicher Zugang, um die Geschenke-Liste in deinen eigenen KI-Assistenten einzubinden
+(z.B. Claude, ChatGPT, Cursor) – als MCP-Server.
+
+MCP-Adresse:   {{ endpoint }}
+API-Schlüssel: {{ key }}
+Gültig bis:    {{ valid_until }}
+
+So bindest du ihn ein:
+
+1) Programme mit eigenem Header (empfohlen), z.B. Claude Code:
+   claude mcp add --transport http geschenke {{ endpoint }} --header "Authorization: Bearer {{ key }}"
+
+   Andere Programme: Adresse {{ endpoint }} und Header
+   Authorization: Bearer {{ key }}
+
+2) Programme, bei denen man nur eine Adresse eintragen kann (z.B. eigene Connectoren in Claude oder ChatGPT,
+   Authentifizierung: keine):
+   {{ secret_url }}
+
+Der Assistent handelt in deinem Namen – mit genau deinen Rechten. Auch dort bleibt geheim, wer dir etwas besorgt.
+
+Behandle den Schlüssel wie ein Passwort und gib ihn nicht weiter. Sperren kannst du alle deine Zugänge
+jederzeit im Chat der Geschenke-Liste: „Sperre meine KI-Zugänge“. Nach Ablauf forderst du einfach einen neuen an.
+
+Du hast den Zugang nicht angefordert? Dann sperre ihn bitte im Chat und sag Timmo Bescheid.
+{% endblock %}
