@@ -161,7 +161,7 @@ def test_person_loeschen_entfernt_verwandtschaft(tmp_path):
 
 def test_prompt_nennt_verwandte(sippe):
     say(sippe, "Timmo", "Ulrike", "Mutter", "Timmo")
-    prompt = SystemPrompt(sippe.c.family, sippe.c.relations).for_actor(Actor(sippe.person("Timmo")))
+    prompt = SystemPrompt(sippe.c.family, sippe.c.relations, sippe.c.admins).for_actor(Actor(sippe.person("Timmo")))
     assert "Verwandte von Timmo: Ulrike = Mutter" in prompt
 
 

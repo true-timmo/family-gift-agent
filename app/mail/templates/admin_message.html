@@ -1,0 +1,6 @@
+{% extends "layout.html" %}
+{% block body %}
+<p><strong>{{ sender }}</strong> hat dir über die Geschenke-Liste geschrieben:</p>
+<blockquote style="margin:16px 0;padding:10px 14px;border-left:3px solid #b4432f;background:#faf7f2;white-space:pre-wrap">{{ text }}</blockquote>
+<p style="color:#7a716a;font-size:14px">{% if reply_to %}Mit „Antworten“ geht deine Antwort direkt an {{ sender }}.{% else %}{{ sender }} hat keine eigene E-Mail-Adresse – bitte anders antworten.{% endif %}</p>
+{% endblock %}

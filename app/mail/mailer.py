@@ -5,7 +5,7 @@ from email.utils import formataddr, make_msgid
 from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescape
 
 from ..domain.models import IssuedInvite
-from ..domain.notifications import NewRegistration, Notification, WishRemoved
+from ..domain.notifications import AdminMessage, NewRegistration, Notification, WishRemoved
 from .transport import MailTransport
 
 
@@ -38,6 +38,8 @@ class Mailer:
                 await self._send_wish_removed(notification)
             case NewRegistration():
                 await self._send_new_registration(notification)
+            case AdminMessage():
+                await self._send_admin_message(notification)
 
     async def _send_wish_removed(self, n: WishRemoved) -> None:
         where = ("von der eigenen Wunschliste" if n.wished_by == n.removed_by
@@ -51,12 +53,19 @@ class Mailer:
         how = f"eingeladen von {n.invited_by}" if n.invited_by else "mit dem Familien-Code"
         await self._send(self._admin_email, f"Neu dabei: {n.name}", "new_registration", name=n.name, how=how)
 
-    async def _send(self, to: str, subject: str, template: str, **context) -> None:
-        context["app_url"] = self._app_url
+    async def _send_admin_message(self, n: AdminMessage) -> None:
+        if self._admin_email:
+            await self._send(self._admin_email, f"Nachricht von {n.sender}", "admin_message", reply_to=n.sender_email,
+                             sender=n.sender, text=n.text)
+
+    async def _send(self, to: str, subject: str, template: str, reply_to: str | None = None, **context) -> None:
+        context |= {"app_url": self._app_url, "reply_to": reply_to}
         message = EmailMessage()
         message["Subject"] = subject
         message["From"] = formataddr(("Geschenke", self._sender))
         message["To"] = to
+        if reply_to:
+            message["Reply-To"] = reply_to
         message["Message-ID"] = make_msgid(domain=self._sender.split("@")[-1] or None)
         message.set_content(self._render(f"{template}.txt", context))
         message.add_alternative(self._render(f"{template}.html", context), subtype="html")

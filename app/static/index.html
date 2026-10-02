@@ -24,7 +24,9 @@
 <div id="chat-view" class="chat" hidden>
   <header>
     <span class="title">🎁<span class="title-text"> Geschenke</span></span>
-    <span id="who" class="who"></span>
+    <span class="who"><span id="who"></span>
+      <button type="button" id="admin-toggle" class="admin-toggle" role="switch" aria-checked="false" hidden>Admin</button>
+    </span>
     <button type="button" class="help-btn" data-help="help-chat" aria-label="Hilfe öffnen">
       <span class="help-icon" aria-hidden="true">?</span></button>
     <button id="family-btn" class="link" aria-expanded="false" aria-controls="family">Familie</button>
@@ -141,6 +143,9 @@
     <dd><q>Paul wünscht sich ein Feuerwehrauto.</q><br>
       Kennt der Helfer Paul noch nicht, fragt er, ob er ihn anlegen soll. Sag dann noch, wessen Kind Paul ist
       (<q>Paul ist der Sohn von Julian.</q>) – dann kann Julian Pauls Wünsche auch ändern.</dd>
+    <dt>Timmo etwas mitteilen</dt>
+    <dd><q>Schreib Timmo, dass bei mir die Liste von Oma nicht angezeigt wird.</q><br>
+      Der Helfer zeigt dir die Nachricht vorher und schickt sie dann per E-Mail an Timmo.</dd>
     <dt>Alles übersichtlich als Tabelle</dt>
     <dd><q>Zeig mir Timmos Wünsche als Tabelle.</q></dd>
   </dl>
@@ -158,11 +163,10 @@
   <dl>
     <dt><span class="ui">Familie</span></dt>
     <dd>Zeigt, wer schon mitmacht. Tippe auf einen Namen, um die Wünsche dieser Person zu sehen.<br>
-      Mit <span class="ui">＋ Jemanden einladen</span> kannst du weitere Familienmitglieder einladen:
-      Vornamen und E-Mail-Adresse eintragen, fertig. Die Person bekommt eine E-Mail mit einem Knopf
-      zum Annehmen. Bis dahin steht bei ihr <em>„eingeladen“</em>, danach <em>„registriert“</em>.<br>
-      Für Kinder ohne E-Mail-Adresse gibt es <span class="ui">＋ Kind oder jemand ohne E-Mail</span>:
-      nur den Vornamen eintragen. Die Wünsche schreiben dann andere im Chat dazu.</dd>
+      Mit <span class="ui">＋ Jemanden hinzufügen</span> trägst du Kinder oder alle ohne E-Mail-Adresse ein:
+      nur den Vornamen. Die Wünsche schreiben dann andere im Chat dazu.<br>
+      Soll jemand mit eigener E-Mail-Adresse mitmachen? Das macht Timmo – schreib es einfach dem Helfer,
+      zum Beispiel <q>Sag Timmo, er soll Gisela einladen: gisela@beispiel.de</q>.</dd>
     <dt><span class="ui">Neu</span></dt>
     <dd>Löscht nur das Gespräch auf dem Bildschirm. <strong>Alle Wünsche bleiben gespeichert.</strong></dd>
     <dt><span class="ui">Abmelden</span></dt>

@@ -3,7 +3,7 @@ from datetime import date
 from typing import Callable
 
 from ..domain.models import Actor
-from ..services import FamilyService, RelationService
+from ..services import AdminPolicy, FamilyService, RelationService
 
 SYSTEM_PROMPT = """Du bist der Geschenke-Assistent der Familie. Du hilfst dabei, Geschenkwünsche zu sammeln
 und doppelte Geschenke zu vermeiden. Antworte kurz, freundlich und auf Deutsch.
@@ -34,7 +34,10 @@ So arbeitest du:
 - Status der Familienmitglieder: „registriert“ = kann sich selbst anmelden, „eingeladen“ = hat eine
   Einladung per E-Mail bekommen, aber noch nicht angenommen, „offen“ = noch nicht dabei.
   Auch wer nicht registriert ist, kann Wünsche haben – andere tragen sie für sie ein.
-- Einladen geht nicht im Chat, sondern oben über „Familie“ → „Jemanden einladen“ (Name + E-Mail-Adresse).
+- Per E-Mail einladen kann nur der Admin ({admin}). Wer jemanden einladen lassen möchte, ein Problem hat oder
+  {admin} etwas sagen will, dem bietest du an, eine Nachricht zu schicken: formuliere sie, zeig sie kurz zur
+  Bestätigung und schicke sie dann mit admin_kontaktieren.
+- Kinder oder andere ohne E-Mail-Adresse kann jeder oben über „Familie“ → „Jemanden hinzufügen“ eintragen.
 - Verwandtschaft: Erzählt jemand, wie Personen verwandt sind („Katharina ist meine Schwester“, „Ulrike ist
   Katharinas Mutter“), speichere es mit verwandtschaft_eintragen – bei „mein/meine“ ist {name} das „von“.
   Die App leitet daraus weitere Beziehungen ab; was dazukam, steht im Ergebnis unter „daraus_folgt“.
@@ -54,21 +57,26 @@ ADMIN_PROMPT = """
 (z.B. einen vergessenen Link ergänzen oder einen doppelten Wunsch löschen) – nutze dafür wunsch_bearbeiten
 und wunsch_entfernen mit der Wunsch-Nummer aus wuensche_anzeigen. Frag vor dem Entfernen kurz nach,
 wenn nicht eindeutig ist, welcher Wunsch gemeint ist.
-Personen löschen geht NICHT im Chat, sondern nur oben über „Familie“ → „Entfernen“.
+Einladen und Personen löschen geht NICHT im Chat, sondern oben über „Familie“ („Jemanden einladen“,
+„Entfernen“) – dafür blendet {name} oben mit dem Schalter „Admin“ die Admin-Funktionen ein.
 Auch für den Admin gilt: Verrate nie, ob jemand einen Wunsch von {name} bereits besorgt."""
 
 
 class SystemPrompt:
-    def __init__(self, family: FamilyService, relations: RelationService, today: Callable[[], date] = date.today):
+    def __init__(self, family: FamilyService, relations: RelationService, admins: AdminPolicy,
+                 today: Callable[[], date] = date.today):
         self._family = family
         self._relations = relations
+        self._admins = admins
         self._today = today
 
     def for_actor(self, actor: Actor) -> str:
         persons = ", ".join(p.name for p in self._family.persons())
         relatives = "; ".join(f"{r.person.name} = {' / '.join(r.names)}" for r in self._relations.relatives(actor.person))
+        admin = self._admins.admin()
         prompt = SYSTEM_PROMPT.format(name=actor.name, today=self._today().strftime("%d.%m.%Y"), persons=persons,
-                                      relatives=relatives or "noch nichts bekannt")
+                                      relatives=relatives or "noch nichts bekannt",
+                                      admin=admin.name if admin else "der Admin")
         if actor.is_admin:
             prompt += ADMIN_PROMPT.format(name=actor.name)
         return prompt

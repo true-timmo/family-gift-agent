@@ -1,0 +1,8 @@
+{% extends "layout.txt" %}
+{% block body %}
+{{ sender }} hat dir über die Geschenke-Liste geschrieben:
+
+{{ text }}
+
+{% if reply_to %}Mit „Antworten“ geht deine Antwort direkt an {{ sender }}.{% else %}{{ sender }} hat keine eigene E-Mail-Adresse – bitte anders antworten.{% endif %}
+{% endblock %}
