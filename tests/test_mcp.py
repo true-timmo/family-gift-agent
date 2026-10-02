@@ -161,3 +161,12 @@ def test_schluessel_im_log_geschwaerzt():
                                ("1.2.3.4", "POST", "/mcp/gsk_geheim123", "1.1", 200), None)
     RedactKeysFilter().filter(record)
     assert "gsk_geheim123" not in record.getMessage() and "/mcp/***" in record.getMessage()
+
+
+@pytest.mark.parametrize("header,value", [("x-access-token", "{key}"), ("X-API-Key", "{key}"),
+                                          ("x-access-token", "Bearer {key}")])
+def test_schluessel_in_anderen_headern(fam, http, header, value):
+    key = issue_key(fam, "Lena")
+    r = http.post("/mcp", headers={header: value.format(key=key), "Accept": "application/json, text/event-stream"},
+                  json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}})
+    assert r.status_code == 200 and r.json()["result"]["tools"]

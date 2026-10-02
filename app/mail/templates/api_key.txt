@@ -17,6 +17,8 @@ So bindest du ihn ein:
    Andere Programme: Adresse {{ endpoint }} und Header
    Authorization: Bearer {{ key }}
 
+   Claude-Connector (Header „x-access-token“): Adresse {{ endpoint }}, Wert {{ key }}
+
 2) Programme, bei denen man nur eine Adresse eintragen kann (z.B. eigene Connectoren in Claude oder ChatGPT,
    Authentifizierung: keine):
    {{ secret_url }}

@@ -11,7 +11,8 @@
 <p><strong>1) Programme mit eigenem Header (empfohlen)</strong>, z.B. Claude Code:</p>
 <pre style="white-space:pre-wrap;word-break:break-all;background:#faf7f2;padding:10px;border-radius:8px;font-size:13px">claude mcp add --transport http geschenke {{ endpoint }} --header "Authorization: Bearer {{ key }}"</pre>
 <p style="font-size:14px">Andere Programme: Adresse <code>{{ endpoint }}</code> und Header
-<code>Authorization: Bearer {{ key }}</code></p>
+<code>Authorization: Bearer {{ key }}</code><br>
+Claude-Connector: Header <code>x-access-token</code> mit dem Wert <code style="word-break:break-all">{{ key }}</code></p>
 <p><strong>2) Programme, bei denen man nur eine Adresse eintragen kann</strong> (z.B. eigene Connectoren in Claude
 oder ChatGPT, Authentifizierung: keine):</p>
 <pre style="white-space:pre-wrap;word-break:break-all;background:#faf7f2;padding:10px;border-radius:8px;font-size:13px">{{ secret_url }}</pre>
