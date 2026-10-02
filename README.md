@@ -29,7 +29,8 @@ Der API-Schlüssel kommt **nur per E-Mail** (nie in den Chat), gilt 30 Tage (`AP
 genau den Rechten seiner Besitzerin – Überraschungsschutz inklusive. Sperren: im Chat „Sperre meine KI-Zugänge“
 oder `app.cli abmelden "<Name>"`.
 
-- `POST /mcp` mit Header `Authorization: Bearer <Schlüssel>` (empfohlen)
+- `POST /mcp` mit Header `Authorization: Bearer <Schlüssel>` (empfohlen) – oder `x-access-token` bzw.
+  `x-api-key` mit dem Schlüssel (z.B. für Claude-Connectoren)
 - `POST /mcp/<Schlüssel>` für Programme, die nur eine Adresse kennen; der Schlüssel wird im Log geschwärzt,
   der Traefik-Router für `/mcp` schreibt kein Zugriffslog
 

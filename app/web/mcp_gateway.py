@@ -4,6 +4,7 @@ Es sind dieselben Tools wie im Chat – mit denselben Regeln, denn die stehen in
 Wer gerade handelt, ergibt sich allein aus dem API-Schlüssel:
 
   POST /mcp            Header „Authorization: Bearer <Schlüssel>“ (empfohlen)
+                       oder „x-access-token: <Schlüssel>“ / „x-api-key: <Schlüssel>“ (z.B. Claude-Connectoren)
   POST /mcp/<Schlüssel>  für Programme, die nur eine Adresse kennen; Schlüssel wird in Logs geschwärzt
 """
 import json
@@ -81,10 +82,16 @@ class McpGateway:
         return server
 
 
+_KEY_HEADERS = ("x-access-token", "x-api-key")   # für Programme, die nur bestimmte Header-Namen anbieten
+
+
 def _key_of(request: Request) -> str | None:
     auth = request.headers.get("authorization", "")
     if auth.lower().startswith("bearer "):
         return auth[7:].strip()
+    for name in _KEY_HEADERS:
+        if value := request.headers.get(name, "").strip():
+            return value.removeprefix("Bearer ").strip()
     return request.path_params.get("key")
 
 
