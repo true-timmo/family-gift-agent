@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block body %}
+<p>Hallo {{ name }},</p>
+<p>hier ist dein persönlicher Zugang, um die Geschenke-Liste in deinen eigenen KI-Assistenten einzubinden
+(z.B. Claude, ChatGPT, Cursor) – als <strong>MCP-Server</strong>.</p>
+<table style="border-collapse:collapse;margin:16px 0;font-size:14px">
+<tr><td style="padding:4px 12px 4px 0;color:#7a716a">MCP-Adresse</td><td><code>{{ endpoint }}</code></td></tr>
+<tr><td style="padding:4px 12px 4px 0;color:#7a716a">API-Schlüssel</td><td><code style="word-break:break-all">{{ key }}</code></td></tr>
+<tr><td style="padding:4px 12px 4px 0;color:#7a716a">Gültig bis</td><td><strong>{{ valid_until }}</strong></td></tr>
+</table>
+<p><strong>1) Programme mit eigenem Header (empfohlen)</strong>, z.B. Claude Code:</p>
+<pre style="white-space:pre-wrap;word-break:break-all;background:#faf7f2;padding:10px;border-radius:8px;font-size:13px">claude mcp add --transport http geschenke {{ endpoint }} --header "Authorization: Bearer {{ key }}"</pre>
+<p style="font-size:14px">Andere Programme: Adresse <code>{{ endpoint }}</code> und Header
+<code>Authorization: Bearer {{ key }}</code></p>
+<p><strong>2) Programme, bei denen man nur eine Adresse eintragen kann</strong> (z.B. eigene Connectoren in Claude
+oder ChatGPT, Authentifizierung: keine):</p>
+<pre style="white-space:pre-wrap;word-break:break-all;background:#faf7f2;padding:10px;border-radius:8px;font-size:13px">{{ secret_url }}</pre>
+<p>Der Assistent handelt in deinem Namen – mit genau deinen Rechten. Auch dort bleibt geheim, wer dir etwas besorgt.</p>
+<p style="color:#7a716a;font-size:14px">Behandle den Schlüssel wie ein Passwort und gib ihn nicht weiter. Sperren kannst
+du alle deine Zugänge jederzeit im Chat der Geschenke-Liste: „Sperre meine KI-Zugänge“. Nach Ablauf forderst du einfach
+einen neuen an.<br>Du hast den Zugang nicht angefordert? Dann sperre ihn bitte im Chat und sag Timmo Bescheid.</p>
+{% endblock %}

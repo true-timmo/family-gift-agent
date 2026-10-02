@@ -28,7 +28,19 @@ class AdminMessage:
     text: str
 
 
-Notification = WishRemoved | NewRegistration | AdminMessage
+@dataclass(frozen=True)
+class ApiKeyIssued:
+    """Neuer KI-Zugang – der Schlüssel geht NUR per Mail an die Person (nie in den Chat oder ins Log)."""
+    recipient_email: str
+    recipient_name: str
+    key: str
+    expires_at: int
+
+    def __repr__(self) -> str:   # Schlüssel nie in Tracebacks/Logs
+        return f"ApiKeyIssued(recipient_name={self.recipient_name!r}, key=***)"
+
+
+Notification = WishRemoved | NewRegistration | AdminMessage | ApiKeyIssued
 
 
 class Notifier(Protocol):

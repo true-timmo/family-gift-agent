@@ -1,11 +1,15 @@
+import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.routing import Route
 
 from ..container import Container
 from ..domain import errors
+from .mcp_gateway import McpGateway, RedactKeysFilter
 from .routes import auth, chat, family
 from .security import FailedAttempts, SessionCookie
 
@@ -28,7 +32,14 @@ async def _domain_error(request: Request, exc: errors.DomainError) -> JSONRespon
 
 
 def create_app(c: Container) -> FastAPI:
-    app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+    mcp = McpGateway(c.tools, c.api_keys, c.admins)
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        async with mcp.lifespan():
+            yield
+
+    app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.state.container = c
     app.state.session_cookie = SessionCookie(secure=c.settings.cookie_secure)
     app.state.failed_attempts = FailedAttempts()
@@ -37,6 +48,9 @@ def create_app(c: Container) -> FastAPI:
     for module in (auth, family, chat):
         app.include_router(module.router)
     app.include_router(auth.login)
+    # MCP für eigene KI-Assistenten: Schlüssel im Header oder (für einfache Programme) in der Adresse
+    app.router.routes += [Route("/mcp", mcp), Route("/mcp/{key}", mcp)]
+    logging.getLogger("uvicorn.access").addFilter(RedactKeysFilter())
 
     @app.get("/healthz")
     async def health():

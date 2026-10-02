@@ -57,6 +57,7 @@ class Settings:
     admin_email: str = ""        # diese Person ist Admin und bekommt Mails bei Neuregistrierungen
     family_code: str = ""        # optionaler Ausweg zur Selbst-Registrierung; leer = nur per Einladung
     cookie_secure: bool = True
+    api_key_days: int = 30       # Gültigkeit persönlicher KI-Zugänge (MCP)
     smtp: SmtpSettings = field(default_factory=SmtpSettings)
     llm: LlmSettings = field(default_factory=LlmSettings)
 
@@ -68,6 +69,7 @@ class Settings:
             admin_email=_env("ADMIN_EMAIL"),
             family_code=_env("FAMILY_CODE"),
             cookie_secure=_env("COOKIE_SECURE", "true").lower() != "false",
+            api_key_days=int(_env("API_KEY_DAYS", "30")),
             smtp=SmtpSettings.from_env(),
             llm=LlmSettings.from_env(),
         )

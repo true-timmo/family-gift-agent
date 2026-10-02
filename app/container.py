@@ -11,10 +11,10 @@ from .agent import ChatAgent, SystemPrompt, ToolRegistry
 from .config import Settings
 from .domain.notifications import Notifier
 from .mail import BackgroundMailNotifier, ConsoleTransport, Mailer, MailTransport, SmtpTransport
-from .services import (AdminContact, AdminPolicy, EmailDirectory, FamilyService, InvitationService, LoginCodeService,
+from .services import (AdminContact, AdminPolicy, ApiKeyService, EmailDirectory, FamilyService, InvitationService, LoginCodeService,
                        MailRateLimiter, Guardianship, PersonRemovalService, PersonResolver, RelationService, RemovalNotices,
                        SessionService, WishService)
-from .storage import (ChatRepository, Database, InviteRepository, LoginCodeRepository, MailLog, PersonRepository,
+from .storage import (ApiKeyRepository, ChatRepository, Database, InviteRepository, LoginCodeRepository, MailLog, PersonRepository,
                       RelationRepository, SessionRepository, WishRepository)
 
 log = logging.getLogger("uvicorn.error")
@@ -33,6 +33,7 @@ class Container:
         mail_log = MailLog(db)
         sessions = SessionRepository(db)
         relations = RelationRepository(db)
+        api_keys = ApiKeyRepository(db)
         self.chat_history = ChatRepository(db)
 
         transport = mail_transport or (ConsoleTransport() if settings.smtp.debug else SmtpTransport(settings.smtp))
@@ -52,10 +53,12 @@ class Container:
         self.sessions = SessionService(sessions)
         self.invitations = InvitationService(db, persons, invites, mail_limit, emails, self.notifier)
         self.removals = PersonRemovalService(db, persons, wishes, invites, codes, mail_log, sessions,
-                                             self.chat_history, relations, notices)
+                                             self.chat_history, relations, api_keys, notices)
 
         self.admin_contact = AdminContact(self.admins, mail_limit, self.notifier)
+        self.api_keys = ApiKeyService(api_keys, mail_limit, self.notifier, settings.api_key_days)
 
-        self.tools = ToolRegistry.standard(self.wishes, self.family, self.relations, self.admin_contact)
+        self.tools = ToolRegistry.standard(self.wishes, self.family, self.relations, self.admin_contact,
+                                           self.api_keys)
         self.agent = ChatAgent(llm_client or ChatAgent.client_for(settings.llm), settings.llm, self.tools,
                                self.chat_history, SystemPrompt(self.family, self.relations, self.admins))

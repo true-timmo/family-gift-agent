@@ -4,13 +4,14 @@ Jedes Tool bekommt die angemeldete Person (Actor) vom Server – nie aus dem Cha
 Das Modell kann also nicht „als jemand anderes“ handeln.
 """
 import json
+from datetime import datetime
 from abc import ABC, abstractmethod
 from typing import ClassVar, Iterable
 
 from ..domain.errors import DomainError
 from ..domain.models import Actor, Reservation
 from ..domain.values import person_name
-from ..services import AdminContact, FamilyService, RelationService, WishService
+from ..services import AdminContact, ApiKeyService, FamilyService, RelationService, WishService
 from . import presenter
 
 _WISH_ID = {"wunsch_id": {"type": "integer"}}
@@ -213,17 +214,63 @@ class ContactAdmin(Tool):
         return {"gesendet_an": self._contact.send(actor, str(args["nachricht"]))}
 
 
+class AboutMe(RelationTool):
+    name = "ueber_mich"
+    description = "Zeigt, in wessen Namen gehandelt wird (angemeldete Person), ob sie Admin ist und ihre Verwandten."
+    parameters = {}
+    required = ()
+
+    def run(self, actor: Actor, args: dict) -> dict:
+        return {"name": actor.name, "admin": actor.is_admin,
+                "verwandte": [{"name": r.person.name, "beziehung": " / ".join(r.names)}
+                              for r in self._relations.relatives(actor.person)]}
+
+
+class ApiKeyTool(Tool, ABC):
+    parameters = {}
+    required = ()
+
+    def __init__(self, keys: ApiKeyService):
+        self._keys = keys
+
+
+class RequestApiKey(ApiKeyTool):
+    name = "ki_zugang_anfordern"
+    description = ("NUR wenn die Person ausdrücklich danach fragt (API-Schlüssel, MCP, eigene KI wie Claude/ChatGPT "
+                   "anbinden): schickt ihr per E-Mail einen persönlichen Zugang, gültig 1 Monat. Der Schlüssel "
+                   "erscheint nie im Chat. Nicht von dir aus anbieten.")
+
+    def run(self, actor: Actor, args: dict) -> dict:
+        sent = self._keys.issue(actor)
+        return {"verschickt_an": sent.email,
+                "gueltig_bis": datetime.fromtimestamp(sent.expires_at).strftime("%d.%m.%Y")}
+
+
+class RevokeApiKeys(ApiKeyTool):
+    name = "ki_zugang_sperren"
+    description = "Sperrt sofort alle KI-Zugänge (API-Schlüssel) der Person, z.B. wenn ein Schlüssel in falsche Hände kam."
+
+    def run(self, actor: Actor, args: dict) -> dict:
+        return {"gesperrt": self._keys.revoke_all(actor.person)}
+
+
 class ToolRegistry:
     def __init__(self, tools: Iterable[Tool]):
         self._tools = {tool.name: tool for tool in tools}
 
     @classmethod
     def standard(cls, wishes: WishService, family: FamilyService, relations: RelationService,
-                 contact: AdminContact) -> "ToolRegistry":
+                 contact: AdminContact, api_keys: ApiKeyService) -> "ToolRegistry":
         return cls([ListPersons(family), AddPerson(family), AddWish(wishes), ShowWishes(wishes), Reserve(wishes), Unreserve(wishes),
                     MyReservations(wishes), EditWish(wishes), RemoveWish(wishes),
                     AddRelation(relations), RemoveRelation(relations), ShowRelatives(relations),
-                    ContactAdmin(contact)])
+                    ContactAdmin(contact), AboutMe(relations), RequestApiKey(api_keys), RevokeApiKeys(api_keys)])
+
+    def without(self, *names: str) -> "ToolRegistry":
+        return ToolRegistry(tool for name, tool in self._tools.items() if name not in names)
+
+    def __iter__(self):
+        return iter(self._tools.values())
 
     def schemas(self) -> list[dict]:
         return [tool.schema() for tool in self._tools.values()]

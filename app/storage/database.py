@@ -74,6 +74,16 @@ CREATE TABLE IF NOT EXISTS relations (
     PRIMARY KEY (person_id, relative_id, kind)
 );
 
+-- Persönliche API-Schlüssel für eigene KI-Assistenten (MCP). Gespeichert wird nur der Hash.
+CREATE TABLE IF NOT EXISTS api_keys (
+    token_hash    TEXT PRIMARY KEY,
+    person_id     INTEGER NOT NULL REFERENCES persons(id),
+    created_at    INTEGER NOT NULL,
+    expires_at    INTEGER NOT NULL,
+    last_used_at  INTEGER,
+    revoked_at    INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS chat_messages (
     id          INTEGER PRIMARY KEY,
     person_id   INTEGER NOT NULL REFERENCES persons(id),
