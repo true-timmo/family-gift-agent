@@ -59,20 +59,45 @@ header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; bord
 #send { background: var(--accent); color: var(--accent-text); border: 0; border-radius: 10px; width: 48px; font-size: 18px; }
 #send:disabled { opacity: .5; }
 
-/* --- Wunsch-Übersicht: jede Tabellenzeile wird eine Karte – auf allen Bildschirmen ---
-   Titel oben, Details (Größe, Farbe …) darunter, dann beschriftete Felder; breite Bildschirme zeigen ein Raster. */
+/* --- Übersichten (Markdown-Tabellen) ---
+   .as-cards (Standard): jede Zeile eine Karte – Titel, Details darunter, dann beschriftete Felder; Raster auf breiten
+   Bildschirmen. .as-table (wenn ausdrücklich nach einer Tabelle gefragt): echte Tabelle, auf dem Handy als Karten. */
 .msg:has(table) { max-width: 100%; width: 100%; }
 .table-wrap { margin: 6px 0; }
-.msg table, .msg thead, .msg tbody, .msg tr, .msg td { display: block; }
-.msg thead { display: none; }
-.msg tbody { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
-.msg tbody tr { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--bg); }
-.msg td { display: flex; gap: 8px; padding: 2px 0; font-size: 15px; overflow-wrap: anywhere; }
-.msg td::before { content: attr(data-label); flex: 0 0 4.5em; color: var(--muted); font-size: 13px; padding-top: 2px; }
-.msg td.cell-title { font-weight: 600; font-size: 16px; padding-bottom: 2px; }
-.msg td.cell-details { color: var(--muted); font-size: 14px; padding-bottom: 4px; white-space: pre-line; }
-.msg td.cell-title::before, .msg td.cell-details::before { display: none; }   /* ohne Beschriftung */
-.msg td.cell-empty { display: none; }                                          /* leere Felder („–“) weglassen */
+.msg td.cell-title { font-weight: 600; }
+
+.as-table { overflow-x: auto; }
+.as-table table { border-collapse: collapse; font-size: 15px; width: 100%; }
+.as-table th, .as-table td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border);
+  vertical-align: top; overflow-wrap: normal; word-break: normal; }      /* kein Umbruch mitten im Wort */
+.as-table th { font-weight: 600; white-space: nowrap; color: var(--muted); font-size: 13px; }
+.as-table tbody tr:last-child td { border-bottom: 0; }
+.as-table td.cell-title { min-width: 12em; }
+
+.as-cards :is(table, thead, tbody, tr, td) { display: block; }
+.as-cards thead { display: none; }
+.as-cards tbody { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.as-cards tbody tr { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--bg); }
+.as-cards td { display: flex; gap: 8px; padding: 2px 0; font-size: 15px; overflow-wrap: anywhere; }
+.as-cards td::before { content: attr(data-label); flex: 0 0 4.5em; color: var(--muted); font-size: 13px; padding-top: 2px; }
+.as-cards td.cell-title { font-size: 16px; padding-bottom: 2px; }
+.as-cards td.cell-details { color: var(--muted); font-size: 14px; padding-bottom: 4px; white-space: pre-line; }
+.as-cards :is(td.cell-title, td.cell-details)::before { display: none; }   /* ohne Beschriftung */
+.as-cards td.cell-empty { display: none; }                                 /* leere Felder („–“) weglassen */
+
+/* Handy: auch die Tabelle wird zu Karten – kein seitliches Scrollen */
+@media (max-width: 640px) {
+  .as-table :is(table, thead, tbody, tr, td) { display: block; width: 100%; }
+  .as-table thead { display: none; }
+  .as-table tbody tr { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin: 8px 0;
+    background: var(--bg); }
+  .as-table td { border: 0; padding: 2px 0; display: flex; gap: 8px; }
+  .as-table td::before { content: attr(data-label); flex: 0 0 5.5em; color: var(--muted); font-size: 13px;
+    padding-top: 2px; }
+  .as-table td.cell-title { font-size: 16px; min-width: 0; padding-bottom: 4px; }
+  .as-table td.cell-title::before { display: none; }
+  .as-table td.cell-empty { display: none; }
+}
 .status { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 13px; white-space: nowrap; }
 .status-open { background: #dcefdc; color: #1f5a1f; }
 .status-mine { background: var(--mine); color: var(--accent); font-weight: 600; }

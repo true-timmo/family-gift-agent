@@ -64,7 +64,7 @@ export class FamilyPanel extends FormView<FamilyState> {
   private readonly handlers: FamilyHandlers = {
     ask: (m: Member) => {
       this.close();
-      this.onAsk(m.du ? "Zeig mir meine Wunschliste als Tabelle" : `Zeig mir die Wünsche von ${m.name} als Tabelle`);
+      this.onAsk(m.du ? "Zeig mir meine Wunschliste" : `Zeig mir die Wünsche von ${m.name}`);
     },
     openForm: (mode) => this.openForm(mode),
     submit: async (e) => {

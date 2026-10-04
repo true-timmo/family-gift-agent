@@ -1,7 +1,9 @@
 // Darstellung von Markdown-Blöcken mit lit-html (Texte werden dabei automatisch escaped).
 import { html, nothing, type TemplateResult } from "lit-html";
 import { classMap } from "lit-html/directives/class-map.js";
-import { type Block, type Cell, type Inline, isDetailsColumn, isEmptyCell, parseMarkdown, statusKind } from "./markdown.ts";
+import {
+  type Block, type Cell, type Inline, isDetailsColumn, isEmptyCell, parseMarkdown, statusKind, type TableLayout,
+} from "./markdown.ts";
 
 const inline = (items: Inline[]): TemplateResult[] => items.map((i) => {
   switch (i.kind) {
@@ -20,16 +22,17 @@ const tableCell = (c: Cell, column: Cell | undefined, index: number) => {
     >${status ? html`<span class="status status-${status}">${inline(c.inlines)}</span>` : inline(c.inlines)}</td>`;
 };
 
-const block = (b: Block): TemplateResult => {
+const block = (b: Block, layout: TableLayout): TemplateResult => {
   switch (b.kind) {
     case "line": return html`${inline(b.inlines)}${b.breakAfter ? html`<br>` : nothing}`;
     case "list": return html`<ul>${b.items.map((item) => html`<li>${inline(item)}</li>`)}</ul>`;
     case "table": return html`
-      <div class="table-wrap"><table>
+      <div class="table-wrap as-${layout}"><table>
         <thead><tr>${b.head.map((h) => html`<th>${inline(h.inlines)}</th>`)}</tr></thead>
         <tbody>${b.rows.map((row) => html`<tr>${row.map((c, k) => tableCell(c, b.head[k], k))}</tr>`)}</tbody>
       </table></div>`;
   }
 };
 
-export const markdown = (text: string): TemplateResult => html`${parseMarkdown(text).map(block)}`;
+export const markdown = (text: string, layout: TableLayout = "cards"): TemplateResult =>
+  html`${parseMarkdown(text).map((b) => block(b, layout))}`;
