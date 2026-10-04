@@ -1,8 +1,9 @@
 {% extends "layout.html" %}
 {% block body %}
 <p>Hallo {{ recipient_name }},</p>
-<p><strong>{{ removed_by }}</strong> hat <strong>„{{ title }}“</strong> {{ where }} genommen.
-Du hattest dieses Geschenk reserviert.</p>
+<p>{% if bought_by_wisher %}<strong>{{ wished_by }}</strong> hat sich <strong>„{{ title }}“</strong> inzwischen selbst besorgt.
+{% else %}<strong>{{ removed_by }}</strong> hat <strong>„{{ title }}“</strong> {{ where }} genommen.
+{% endif %}Du hattest dieses Geschenk reserviert.</p>
 <p>Falls du es schon gekauft hast: Vielleicht lässt es sich zurückgeben
 oder passt zu einem anderen Anlass.</p>
 {% endblock %}

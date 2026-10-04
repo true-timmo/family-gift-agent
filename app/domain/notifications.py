@@ -11,6 +11,7 @@ class WishRemoved:
     wished_by: str
     removed_by: str
     title: str
+    bought_by_wisher: bool = False   # die Person hat es sich inzwischen selbst besorgt
 
 
 @dataclass(frozen=True)

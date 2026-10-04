@@ -68,9 +68,9 @@ class RemovalNotices:
         self._persons = persons
         self._notifier = notifier
 
-    def wish_removed(self, wish: Wish, removed_by: str) -> None:
+    def wish_removed(self, wish: Wish, removed_by: str, bought_by_wisher: bool = False) -> None:
         reserver = self._persons.by_id(wish.reserved_by) if wish.reserved_by else None
         if reserver and reserver.email:
             self._notifier.publish(WishRemoved(recipient_email=reserver.email, recipient_name=reserver.name,
                                                wished_by=wish.person_name, removed_by=removed_by,
-                                               title=wish.title))
+                                               title=wish.title, bought_by_wisher=bought_by_wisher))

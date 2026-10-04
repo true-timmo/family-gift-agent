@@ -100,6 +100,38 @@ class AddWish(WishTool):
         return {"id": wish.id, "fuer": wish.person_name, "titel": wish.title}
 
 
+class AddTip(WishTool):
+    name = "geheimtipp_eintragen"
+    description = ("Merkt sich einen Wunsch, den eine ANDERE Person nebenbei erwähnt hat („Andrea hätte gern …“, "
+                   "„hab heute erfahren, dass …“). Die Person selbst sieht ihn NIE – alle anderen sehen ihn mit "
+                   "„geheimtipp_von“ und können nachfragen. Alle Details (Ort, Datum, Größe …) in die beschreibung.")
+    parameters = {"person": {"type": "string", "description": "Für wen der Wunsch ist: Name oder Verwandtschaftswort"},
+                  **_WISH_FIELDS}
+    required = ("person", "titel")
+
+    def run(self, actor: Actor, args: dict) -> dict:
+        wish = self._wishes.add_tip(actor, args["person"], presenter.details_from_args(args))
+        return {"id": wish.id, "fuer": wish.person_name, "titel": wish.title, "geheimtipp": True}
+
+
+class BoughtMyself(WishTool):
+    name = "selbst_besorgt"
+    description = ("Die fragende Person hat sich etwas inzwischen SELBST gekauft/besorgt. Entfernt den passenden "
+                   "eigenen Wunsch (wunsch_id, falls er auf der eigenen Liste steht) und still auch Geheimtipps, die "
+                   "andere dafür eingetragen haben; wer reserviert hatte, bekommt eine Mail. Die Antwort verrät "
+                   "absichtlich nicht, ob es Geheimtipps gab.")
+    parameters = {"was": {"type": "string", "description": "Was besorgt wurde, mit den wichtigsten Stichworten "
+                                                          "(z.B. 'Konzertkarten Backstreet Boys Düsseldorf')"},
+                  "wunsch_id": {"type": "integer", "description": "Nur falls es ein Wunsch auf der eigenen Liste ist"}}
+    required = ("was",)
+
+    def run(self, actor: Actor, args: dict) -> dict:
+        wish_id = args.get("wunsch_id")
+        done = self._wishes.bought_myself(actor, str(args["was"]), int(wish_id) if wish_id is not None else None)
+        return {"von_deiner_liste_entfernt": [w.title for w in done],
+                "hinweis": "Erledigt. Falls jemand das für dich vorgemerkt hatte, weiß er jetzt Bescheid."}
+
+
 class ShowWishes(WishTool):
     name = "wuensche_anzeigen"
     description = "Zeigt die Wunschliste einer Person mit Status (offen / von dir reserviert / besorgt <Name>)."
@@ -262,7 +294,7 @@ class ToolRegistry:
     @classmethod
     def standard(cls, wishes: WishService, family: FamilyService, relations: RelationService,
                  contact: AdminContact, api_keys: ApiKeyService) -> "ToolRegistry":
-        return cls([ListPersons(family), AddPerson(family), AddWish(wishes), ShowWishes(wishes), Reserve(wishes), Unreserve(wishes),
+        return cls([ListPersons(family), AddPerson(family), AddWish(wishes), AddTip(wishes), BoughtMyself(wishes), ShowWishes(wishes), Reserve(wishes), Unreserve(wishes),
                     MyReservations(wishes), EditWish(wishes), RemoveWish(wishes),
                     AddRelation(relations), RemoveRelation(relations), ShowRelatives(relations),
                     ContactAdmin(contact), AboutMe(relations), RequestApiKey(api_keys), RevokeApiKeys(api_keys)])

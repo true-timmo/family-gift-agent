@@ -4,27 +4,28 @@ from ..domain.errors import NotFoundError
 from ..domain.models import Wish, WishDetails
 from .database import Database, now
 
-_SELECT = """SELECT w.*, p.name AS person_name, r.name AS reserver_name FROM wishes w
-             JOIN persons p ON p.id = w.person_id LEFT JOIN persons r ON r.id = w.reserved_by"""
+_SELECT = """SELECT w.*, p.name AS person_name, r.name AS reserver_name, c.name AS creator_name FROM wishes w
+             JOIN persons p ON p.id = w.person_id LEFT JOIN persons r ON r.id = w.reserved_by
+             LEFT JOIN persons c ON c.id = w.created_by"""
 
 
 def _wish(row: sqlite3.Row) -> Wish:
     details = WishDetails(row["title"], row["description"], row["shop"], row["url"], row["price"])
     return Wish(id=row["id"], person_id=row["person_id"], created_by=row["created_by"], details=details,
-                reserved_by=row["reserved_by"], deleted_at=row["deleted_at"],
-                person_name=row["person_name"], reserver_name=row["reserver_name"])
+                reserved_by=row["reserved_by"], deleted_at=row["deleted_at"], secret=bool(row["secret"]),
+                person_name=row["person_name"], reserver_name=row["reserver_name"], creator_name=row["creator_name"])
 
 
 class WishRepository:
     def __init__(self, db: Database):
         self._db = db
 
-    def add(self, person_id: int, details: WishDetails, created_by: int) -> int:
+    def add(self, person_id: int, details: WishDetails, created_by: int, secret: bool = False) -> int:
         return self._db.execute(
-            """INSERT INTO wishes (person_id, title, description, shop, url, price, created_by, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO wishes (person_id, title, description, shop, url, price, created_by, created_at, secret)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (person_id, details.title, details.description, details.shop, details.url, details.price,
-             created_by, now())).lastrowid
+             created_by, now(), int(secret))).lastrowid
 
     def require(self, wish_id: int) -> Wish:
         row = self._db.one(f"{_SELECT} WHERE w.id = ?", (wish_id,))

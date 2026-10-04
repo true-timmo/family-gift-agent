@@ -2,7 +2,11 @@
 {% block body %}
 Hallo {{ recipient_name }},
 
+{% if bought_by_wisher %}
+{{ wished_by }} hat sich „{{ title }}“ inzwischen selbst besorgt.
+{% else %}
 {{ removed_by }} hat „{{ title }}“ {{ where }} genommen.
+{% endif %}
 Du hattest dieses Geschenk reserviert.
 
 Falls du es schon gekauft hast: Vielleicht lässt es sich zurückgeben oder passt zu einem anderen Anlass.

@@ -110,11 +110,18 @@ class Database:
         self._migrate()
         self._depth = 0
 
+    # Spalten, die nach dem ersten Start dazukamen: (Tabelle, Spalte, Definition)
+    _ADDED_COLUMNS = (
+        ("persons", "gender", "TEXT"),                          # "w" / "m" / NULL
+        ("wishes", "secret", "INTEGER NOT NULL DEFAULT 0"),    # 1 = Geheimtipp, die Person selbst sieht ihn nie
+    )
+
     def _migrate(self) -> None:
         """Ergänzt Spalten, die es in älteren Datenbanken noch nicht gibt."""
-        columns = {row["name"] for row in self._conn.execute("PRAGMA table_info(persons)")}
-        if "gender" not in columns:
-            self._conn.execute("ALTER TABLE persons ADD COLUMN gender TEXT")   # "w" / "m" / NULL
+        for table, column, definition in self._ADDED_COLUMNS:
+            columns = {row["name"] for row in self._conn.execute(f"PRAGMA table_info({table})")}
+            if column not in columns:
+                self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
     def execute(self, sql: str, params: tuple = ()) -> sqlite3.Cursor:
         return self._conn.execute(sql, params)
