@@ -59,33 +59,25 @@ header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; bord
 #send { background: var(--accent); color: var(--accent-text); border: 0; border-radius: 10px; width: 48px; font-size: 18px; }
 #send:disabled { opacity: .5; }
 
-/* --- Tabellen --- */
+/* --- Wunsch-Übersicht: jede Tabellenzeile wird eine Karte – auf allen Bildschirmen ---
+   Titel oben, Details (Größe, Farbe …) darunter, dann beschriftete Felder; breite Bildschirme zeigen ein Raster. */
 .msg:has(table) { max-width: 100%; width: 100%; }
-.table-wrap { overflow-x: auto; margin: 6px 0; }
-.msg table { border-collapse: collapse; font-size: 15px; width: 100%; }
-.msg th, .msg td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top;
-  overflow-wrap: normal; word-break: normal; }          /* kein Umbruch mitten im Wort */
-.msg th { font-weight: 600; white-space: nowrap; color: var(--muted); font-size: 13px; }
-.msg tbody tr:last-child td { border-bottom: 0; }
-.msg td.cell-title { font-weight: 600; min-width: 12em; }
+.table-wrap { margin: 6px 0; }
+.msg table, .msg thead, .msg tbody, .msg tr, .msg td { display: block; }
+.msg thead { display: none; }
+.msg tbody { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.msg tbody tr { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--bg); }
+.msg td { display: flex; gap: 8px; padding: 2px 0; font-size: 15px; overflow-wrap: anywhere; }
+.msg td::before { content: attr(data-label); flex: 0 0 4.5em; color: var(--muted); font-size: 13px; padding-top: 2px; }
+.msg td.cell-title { font-weight: 600; font-size: 16px; padding-bottom: 2px; }
+.msg td.cell-details { color: var(--muted); font-size: 14px; padding-bottom: 4px; white-space: pre-line; }
+.msg td.cell-title::before, .msg td.cell-details::before { display: none; }   /* ohne Beschriftung */
+.msg td.cell-empty { display: none; }                                          /* leere Felder („–“) weglassen */
 .status { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 13px; white-space: nowrap; }
 .status-open { background: #dcefdc; color: #1f5a1f; }
 .status-mine { background: var(--mine); color: var(--accent); font-weight: 600; }
 .status-taken { background: var(--border); color: var(--muted); }
 @media (prefers-color-scheme: dark) { .status-open { background: #23422a; color: #b9e3bf; } }
-
-/* Handy: jede Tabellenzeile wird eine Karte – kein seitliches Scrollen */
-@media (max-width: 640px) {
-  .msg table, .msg thead, .msg tbody, .msg tr, .msg td { display: block; width: 100%; }
-  .msg thead { display: none; }
-  .msg tbody tr { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin: 8px 0;
-    background: var(--bg); }
-  .msg td { border: 0; padding: 2px 0; display: flex; gap: 8px; }
-  .msg td::before { content: attr(data-label); flex: 0 0 5.5em; color: var(--muted); font-size: 13px; padding-top: 2px; }
-  .msg td.cell-title { font-size: 16px; min-width: 0; padding-bottom: 4px; }
-  .msg td.cell-title::before { display: none; }          /* Titel ohne Beschriftung */
-  .msg td.cell-empty { display: none; }                  /* leere Felder („–“) weglassen */
-}
 
 .family { border-bottom: 1px solid var(--border); padding: 12px 16px; background: var(--surface); }
 #family-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }

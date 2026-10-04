@@ -105,3 +105,6 @@ export function statusKind(column: string, value: string): StatusKind | null {
 }
 
 export const isEmptyCell = (c: Cell) => ["", "–", "-"].includes(c.text);
+
+/** Spalte mit Details zum Wunsch (Größe, Farbe …) – steht in der Karte ohne Beschriftung unter dem Titel. */
+export const isDetailsColumn = (column: string) => /^(details|beschreibung)$/i.test(column.trim());
