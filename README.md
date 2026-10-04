@@ -23,6 +23,16 @@ fragen nach den Wünschen anderer („Was wünscht sich Mama?“) und reserviere
 Die Regeln (Reservierung, Überraschungsschutz, Berechtigungen) stehen im Code (`app/services/`),
 nicht im Prompt – das Modell ruft nur Tools auf und kann sie nicht umgehen.
 
+## Datenschutz gegenüber dem Sprachmodell
+
+Namen und E-Mail-Adressen gehen nie im Klartext an das Sprachmodell (`app/agent/privacy.py`): Vor dem Senden
+werden alle bekannten Familiennamen durch stabile Platzhalter ersetzt („Person7“, auch „Person7s“ im Genitiv),
+E-Mail-Adressen durch „Mailadresse1“ – in System-Prompt, Verlauf, Nachricht und Tool-Ergebnissen. Tool-Argumente
+und Antworten (auch gestreamt) übersetzt die App zurück; Nutzer und gespeicherter Verlauf sehen Klartext.
+Familienstatus und Verwandtschaft bleiben erhalten – ohne Namen sind sie nicht mehr persönlich.
+Grenze: Namen, die die App noch nicht kennt, bleiben stehen. Über MCP gilt das nicht – dort wählt jede Person
+ihr eigenes Modell und schreibt ihm ohnehin mit echten Namen.
+
 ## Eigene KI anbinden (MCP)
 
 Registrierte Familienmitglieder können die Wunschliste als **MCP-Server** in ihren eigenen KI-Assistenten

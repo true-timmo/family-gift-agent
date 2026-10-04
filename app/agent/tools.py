@@ -102,7 +102,7 @@ class AddWish(WishTool):
 
 class AddTip(WishTool):
     name = "geheimtipp_eintragen"
-    description = ("Merkt sich einen Wunsch, den eine ANDERE Person nebenbei erwähnt hat („Andrea hätte gern …“, "
+    description = ("Merkt sich einen Wunsch, den eine ANDERE Person nebenbei erwähnt hat („Person4 hätte gern …“, "
                    "„hab heute erfahren, dass …“). Die Person selbst sieht ihn NIE – alle anderen sehen ihn mit "
                    "„geheimtipp_von“ und können nachfragen. Alle Details (Ort, Datum, Größe …) in die beschreibung.")
     parameters = {"person": {"type": "string", "description": "Für wen der Wunsch ist: Name oder Verwandtschaftswort"},
@@ -204,8 +204,8 @@ class RelationTool(Tool, ABC):
 class AddRelation(RelationTool):
     name = "verwandtschaft_eintragen"
     description = ("Speichert, wie zwei Familienmitglieder verwandt sind: „<person> ist <beziehung> von <von>“. "
-                   "Beispiel: „Katharina ist meine Schwester“ (Timmo schreibt) → person=Katharina, "
-                   "beziehung=Schwester, von=Timmo. Weitere Beziehungen leitet die App selbst ab.")
+                   "Beispiel: „Person2 ist meine Schwester“ (Person1 schreibt) → person=Person2, "
+                   "beziehung=Schwester, von=Person1. Weitere Beziehungen leitet die App selbst ab.")
 
     def run(self, actor: Actor, args: dict) -> dict:
         change = self._relations.add(actor, args["person"], args["beziehung"], args["von"])
@@ -235,7 +235,7 @@ class ShowRelatives(RelationTool):
 
 class ContactAdmin(Tool):
     name = "admin_kontaktieren"
-    description = ("Schickt dem Admin eine Nachricht per E-Mail, z.B. „Bitte lade Gisela ein (gisela@…)“ oder ein "
+    description = ("Schickt dem Admin eine Nachricht per E-Mail, z.B. „Bitte lade meine Cousine ein (Mailadresse1)“ oder ein "
                    "Problem. Vorher den Text kurz zeigen und bestätigen lassen.")
     parameters = {"nachricht": {"type": "string", "description": "Die Nachricht, in der Ich-Form der fragenden Person"}}
     required = ("nachricht",)

@@ -62,7 +62,7 @@ class PersonResolver:
             names = ", ".join(sorted(p.name for p in found))
             raise ConflictError(f"Mit „{word}“ können mehrere gemeint sein: {names}. Bitte den Namen nennen.")
         raise NotFoundError(f"Ich weiß noch nicht, wer „{word}“ von {speaker.name} ist. Sag es mir z.B. so: "
-                            f"„Ulrike ist meine Mutter“.")
+                            "„<Name> ist meine Mutter“.")
 
 
 class Guardianship:

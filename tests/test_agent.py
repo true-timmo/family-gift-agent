@@ -4,6 +4,7 @@ import json
 from types import SimpleNamespace as NS
 
 from app.agent import ChatAgent, SystemPrompt
+from app.agent.privacy import Pseudonymizer
 from app.config import LlmSettings
 
 
@@ -41,7 +42,8 @@ def run(agent, actor, text):
 
 def agent_for(fam, llm, fallback=()):
     settings = LlmSettings(model="test/model", fallback_models=fallback)
-    return ChatAgent(llm, settings, fam.c.tools, fam.c.chat_history, SystemPrompt(fam.c.family, fam.c.relations, fam.c.admins))
+    return ChatAgent(llm, settings, fam.c.tools, fam.c.chat_history, SystemPrompt(fam.c.family, fam.c.relations, fam.c.admins),
+                     privacy=lambda: Pseudonymizer(fam.c.family.persons()))
 
 
 def test_tool_aufruf_und_antwort(fam):
@@ -68,7 +70,7 @@ def test_system_prompt_und_ausweichmodelle(fam):
     request = llm.requests[0]
     assert request["extra_body"] == {"models": ["test/model", "b/model"]}
     system = request["messages"][0]["content"]
-    assert "Du sprichst gerade mit: Mama" in system and "ist Admin" in system
+    assert f"Du sprichst gerade mit: Person{fam.ids['Mama']}" in system and "ist Admin" in system
     assert "Wunsch | Details | Shop | Preis" in system and "Größe, Farbe" in system
 
 
