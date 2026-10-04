@@ -1,6 +1,7 @@
 // Chat: Verlauf anzeigen, Nachricht senden, Antwort live mitlesen.
 import type { Api, ChatMessage } from "../api.ts";
 import { ApiError } from "../api.ts";
+import { tableLayoutFor } from "../markdown.ts";
 import { View } from "../view.ts";
 import { type Message, messagesTemplate } from "./chat.templates.ts";
 
@@ -42,7 +43,13 @@ export class ChatView extends View<ChatState> {
   }
 
   load(history: ChatMessage[]): void {
-    this.update({ messages: history.map((m) => ({ role: m.role, text: m.content })) });
+    let question = "";
+    this.update({
+      messages: history.map((m) => {
+        if (m.role === "user") question = m.content;
+        return { role: m.role, text: m.content, tables: tableLayoutFor(question) };
+      }),
+    });
     this.el.input.focus();
   }
 
@@ -74,7 +81,7 @@ export class ChatView extends View<ChatState> {
     this.setDraft("");
     this.el.send.disabled = true;
 
-    const reply: Message = { role: "assistant", text: "", typing: true };
+    const reply: Message = { role: "assistant", text: "", typing: true, tables: tableLayoutFor(text) };
     const tools = new Set<string>();
     let model = "";
     const show = () => this.update({ messages: [...this.state.messages.slice(0, -1), { ...reply }] });

@@ -69,6 +69,7 @@ def test_system_prompt_und_ausweichmodelle(fam):
     assert request["extra_body"] == {"models": ["test/model", "b/model"]}
     system = request["messages"][0]["content"]
     assert "Du sprichst gerade mit: Mama" in system and "ist Admin" in system
+    assert "Wunsch | Details | Shop | Preis" in system and "Größe, Farbe" in system
 
 
 def test_fehler_des_modells(fam):

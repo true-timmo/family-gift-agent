@@ -105,3 +105,11 @@ export function statusKind(column: string, value: string): StatusKind | null {
 }
 
 export const isEmptyCell = (c: Cell) => ["", "–", "-"].includes(c.text);
+
+export type TableLayout = "cards" | "table";
+
+/** Übersichten erscheinen als Karten – als echte Tabelle nur, wenn in der Frage „Tabelle“ vorkommt. */
+export const tableLayoutFor = (question: string): TableLayout => (/tabell/i.test(question) ? "table" : "cards");
+
+/** Spalte mit Details zum Wunsch (Größe, Farbe …) – steht in der Karte ohne Beschriftung unter dem Titel. */
+export const isDetailsColumn = (column: string) => /^(details|beschreibung)$/i.test(column.trim());

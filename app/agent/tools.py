@@ -25,7 +25,8 @@ _RELATION = {
 }
 _WISH_FIELDS = {
     "titel": {"type": "string", "description": "Kurzer Name des Geschenks"},
-    "beschreibung": {"type": "string", "description": "Details wie Größe, Farbe, Modell"},
+    "beschreibung": {"type": "string", "description": "Alles für den richtigen Kauf, als kurze Stichworte: Größe, "
+                                                     "Farbe, Ausgabe/Auflage, Sprache, Modell, Variante, Menge"},
     "shop": {"type": "string", "description": "Wo es das zu kaufen gibt (Geschäft oder Online-Shop)"},
     "link": {"type": "string", "description": "Direkter Link zum Produkt"},
     "preis": {"type": "string", "description": "Ungefährer Preis, z.B. '39 €'"},

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { type Block, parseInline, parseMarkdown, statusKind } from "../src/markdown.ts";
+import { type Block, isDetailsColumn, parseInline, parseMarkdown, statusKind, tableLayoutFor } from "../src/markdown.ts";
 
 const text = (t: string) => ({ kind: "text", text: t });
 const line = (b: Block) => (b.kind === "line" ? b : assert.fail(`erwartet Zeile, nicht ${b.kind}`));
@@ -48,4 +48,15 @@ test("Status-Etiketten nur in der Status-Spalte", () => {
   assert.equal(statusKind("Status", "besorgt Mama"), "taken");
   assert.equal(statusKind("Shop", "offen"), null);
   assert.equal(statusKind("Status", "?"), null);
+});
+
+test("Details-Spalte wird erkannt", () => {
+  assert.ok(isDetailsColumn("Details") && isDetailsColumn(" beschreibung "));
+  assert.ok(!isDetailsColumn("Shop") && !isDetailsColumn("Details zum Shop"));
+});
+
+test("Tabelle nur auf ausdrücklichen Wunsch", () => {
+  assert.equal(tableLayoutFor("Zeig mir Timmos Wünsche als Tabelle"), "table");
+  assert.equal(tableLayoutFor("tabellarisch bitte"), "table");
+  assert.equal(tableLayoutFor("Was wünscht sich Mama?"), "cards");
 });
