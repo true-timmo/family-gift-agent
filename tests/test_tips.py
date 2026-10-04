@@ -1,6 +1,9 @@
 """Geheimtipps: Wünsche, die sich jemand für eine andere Person merkt – unsichtbar für diese Person."""
+import asyncio
 import json
 
+from app.domain.matching import matches
+from app.domain.notifications import WishRemoved
 from app.storage import Database
 
 
@@ -50,3 +53,51 @@ def test_alte_datenbank_bekommt_spalte(tmp_path):
     db = Database(str(path))
     db.execute("ALTER TABLE wishes DROP COLUMN secret")                  # Stand vor diesem Feature
     assert Database(str(path)).one("SELECT COUNT(*) AS n FROM pragma_table_info('wishes') WHERE name = 'secret'")["n"] == 1
+
+
+# --- Selbst besorgt -------------------------------------------------------------
+
+def test_textvergleich():
+    assert matches("Konzertkarten Backstreet Boys", "Karten für das Backstreet Boys Konzert", "Düsseldorf, Mai 2027")
+    assert matches("die Sony Kopfhörer", "Kopfhörer WH-1000XM5", "Sony, schwarz")
+    assert not matches("Buch", "Kochbuch Simplissime")             # zu wenig Gemeinsames
+    assert not matches("Schal", "Mütze", "rot")
+    assert not matches("gekauft", "Schal")                          # nur Füllwörter
+
+
+def test_selbst_besorgt_entfernt_passenden_geheimtipp_und_benachrichtigt(fam):
+    konzert = tip(fam, "Papa", "Mama", "Karten Backstreet Boys Konzert", beschreibung="Düsseldorf, Mai 2027")["id"]
+    tip(fam, "Lena", "Mama", "Schal")
+    fam.call("Lena", "reservieren", wunsch_id=konzert)
+    r = fam.call("Mama", "selbst_besorgt", was="Konzertkarten für die Backstreet Boys")
+    assert r["von_deiner_liste_entfernt"] == []
+    titles = [w["titel"] for w in fam.call("Papa", "wuensche_anzeigen", person="Mama")["wuensche"]]
+    assert titles == ["Schal"]                                          # nur der passende Tipp ist weg
+    assert fam.notifier.sent == [WishRemoved("lena@example.de", "Lena", wished_by="Mama", removed_by="Mama",
+                                             title="Karten Backstreet Boys Konzert", bought_by_wisher=True)]
+
+
+def test_antwort_verraet_keine_geheimtipps(fam):
+    ohne = fam.call("Mama", "selbst_besorgt", was="Schal")
+    tip(fam, "Papa", "Mama", "Schal")
+    mit = fam.call("Mama", "selbst_besorgt", was="Schal")
+    assert ohne == mit
+
+
+def test_selbst_besorgt_eigener_wunsch(fam):
+    w = fam.add_wish("Mama", "Mama", "Gartenschere")
+    fam.call("Papa", "reservieren", wunsch_id=w)
+    r = fam.call("Mama", "selbst_besorgt", was="Gartenschere", wunsch_id=w)
+    assert r["von_deiner_liste_entfernt"] == ["Gartenschere"]
+    assert fam.call("Mama", "wuensche_anzeigen", person="Mama")["wuensche"] == []
+    assert fam.notifier.sent[-1].bought_by_wisher and fam.notifier.sent[-1].recipient_name == "Papa"
+    fremd = fam.add_wish("Papa", "Papa", "Pfanne")
+    assert "nicht dein Wunsch" in fam.call("Mama", "selbst_besorgt", was="Pfanne", wunsch_id=fremd)["fehler"]
+
+
+def test_mail_selbst_besorgt(fam):
+    asyncio.run(fam.c.mailer.send_notification(WishRemoved("l@example.de", "Lena", "Andrea", "Andrea",
+                                                           "Konzertkarten", bought_by_wisher=True)))
+    msg = fam.mails.messages[-1]
+    assert msg["Subject"] == "„Konzertkarten“ hat sich erledigt"
+    assert "Andrea hat sich „Konzertkarten“ inzwischen selbst besorgt." in fam.mails.last_text()

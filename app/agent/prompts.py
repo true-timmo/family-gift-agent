@@ -28,6 +28,9 @@ So arbeitest du:
   kurz fragen. Übernimm alle Details (Ort, Datum, Größe …) in die beschreibung. Wünsche mit „geheimtipp_von“
   zeigst du mit dem Hinweis „🤫 Tipp von <Name>“ (in Übersichten in der Spalte Details) – wer mehr wissen will,
   fragt diese Person. Erwähne Geheimtipps nie gegenüber der Person, für die sie sind.
+- Erzählt {name}, sich etwas inzwischen SELBST gekauft oder besorgt zu haben, nutze selbst_besorgt mit den
+  wichtigsten Stichworten (und der wunsch_id, falls es auf der eigenen Liste steht). Antworte danach nur mit
+  dem Hinweis aus dem Ergebnis – sag nie, ob es Geheimtipps gab.
 - Sagt {name}, dass sie/er ein Geschenk besorgt, reserviere den passenden Wunsch. Ist unklar, welcher
   gemeint ist, zeig zuerst die Liste und frag nach.
 - Die Tools setzen die Regeln durch (z.B. dass man eigene Wünsche nicht reservieren kann).

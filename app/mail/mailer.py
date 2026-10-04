@@ -47,8 +47,11 @@ class Mailer:
     async def _send_wish_removed(self, n: WishRemoved) -> None:
         where = ("von der eigenen Wunschliste" if n.wished_by == n.removed_by
                  else f"von der Wunschliste für {n.wished_by}")
-        await self._send(n.recipient_email, f"„{n.title}“ wurde von der Wunschliste genommen", "wish_removed",
-                         recipient_name=n.recipient_name, removed_by=n.removed_by, title=n.title, where=where)
+        subject = (f"„{n.title}“ hat sich erledigt" if n.bought_by_wisher
+                   else f"„{n.title}“ wurde von der Wunschliste genommen")
+        await self._send(n.recipient_email, subject, "wish_removed", recipient_name=n.recipient_name,
+                         removed_by=n.removed_by, wished_by=n.wished_by, title=n.title, where=where,
+                         bought_by_wisher=n.bought_by_wisher)
 
     async def _send_new_registration(self, n: NewRegistration) -> None:
         if not self._admin_email:

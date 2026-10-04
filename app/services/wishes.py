@@ -4,6 +4,7 @@ Sie stehen hier im Code – nicht im Prompt –, damit das Sprachmodell sie wede
 """
 from dataclasses import replace
 
+from ..domain.matching import matches
 from ..domain.errors import ConflictError, DomainError, NotFoundError, PermissionDeniedError
 from ..domain.models import Actor, ListedWish, Reservation, Wish, WishDetails, WishList
 from ..storage import Database, WishRepository
@@ -99,6 +100,31 @@ class WishService:
         if wish.reserved_by not in (None, actor.id):
             self._notices.wish_removed(wish, removed_by=actor.name)
         return wish
+
+    def bought_myself(self, actor: Actor, description: str, wish_id: int | None = None) -> list[Wish]:
+        """Die Person hat sich etwas selbst besorgt.
+
+        - Mit `wish_id`: dieser eigene Wunsch ist erledigt.
+        - Passende Geheimtipps für die Person werden still entfernt.
+        Wer davon etwas reserviert hatte, bekommt eine Mail. Zurück kommen NUR die sichtbaren eigenen Wünsche –
+        ob es Geheimtipps gab, darf die Antwort nicht verraten.
+        """
+        visible: list[Wish] = []
+        with self._db.transaction():
+            if wish_id is not None:
+                wish = self._require(actor, wish_id)
+                if wish.person_id != actor.id:
+                    raise PermissionDeniedError("Das ist nicht dein Wunsch.")
+                if not wish.is_deleted:
+                    visible.append(wish)
+            tips = [w for w in self._wishes.active_of(actor.id)
+                    if w.hidden_from(actor) and matches(description, w.title, w.details.description)]
+            for wish in visible + tips:
+                self._wishes.soft_delete(wish.id)
+        for wish in visible + tips:
+            if wish.reserved_by not in (None, actor.id):
+                self._notices.wish_removed(wish, removed_by=actor.name, bought_by_wisher=True)
+        return visible
 
     def _require(self, actor: Actor, wish_id: int) -> Wish:
         """Wunsch per Nummer – ein Geheimtipp für die fragende Person verhält sich, als gäbe es ihn nicht."""
