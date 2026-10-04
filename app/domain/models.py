@@ -65,8 +65,10 @@ class Wish:
     details: WishDetails
     reserved_by: int | None = None  # wer es besorgt
     deleted_at: int | None = None   # vom Wünschenden entfernt
+    secret: bool = False            # Geheimtipp: von jemand anderem gemerkt, die Person selbst sieht ihn nie
     person_name: str | None = None  # aus Abfragen mit Join
     reserver_name: str | None = None
+    creator_name: str | None = None
 
     @property
     def title(self) -> str:
@@ -75,6 +77,10 @@ class Wish:
     @property
     def is_deleted(self) -> bool:
         return self.deleted_at is not None
+
+    def hidden_from(self, actor: Actor) -> bool:
+        """Geheimtipps existieren für die Person selbst nicht – auch nicht für Admins."""
+        return self.secret and self.person_id == actor.id
 
     def editable_by(self, actor: Actor) -> bool:
         return actor.is_admin or actor.id in (self.person_id, self.created_by)

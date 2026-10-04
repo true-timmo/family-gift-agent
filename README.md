@@ -12,6 +12,8 @@ fragen nach den Wünschen anderer („Was wünscht sich Mama?“) und reserviere
 - **Reservierungen**: doppelte Reservierung ausgeschlossen, auch bei gleichzeitigen Anfragen;
   in den Listen anderer steht, wer was besorgt
 - **Überraschungsschutz**: Wer sich etwas wünscht, erfährt nie, ob es schon jemand besorgt
+- **Geheimtipps**: Wünsche, die jemand nur nebenbei erwähnt hat, merkt sich die Familie für ihn – er selbst sieht
+  sie nie, alle anderen sehen, wer den Tipp gegeben hat
 - **Benachrichtigung per Mail**, wenn ein bereits reservierter Wunsch entfernt wird
 - **Einladungen per Mail**: Name und Adresse legt der Einladende fest, ein Klick auf den Link genügt
 - **Anmeldung per Einmal-Code (OTP)** per Mail, keine Passwörter; Familien-Code als optionaler Ausweg

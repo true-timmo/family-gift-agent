@@ -100,6 +100,20 @@ class AddWish(WishTool):
         return {"id": wish.id, "fuer": wish.person_name, "titel": wish.title}
 
 
+class AddTip(WishTool):
+    name = "geheimtipp_eintragen"
+    description = ("Merkt sich einen Wunsch, den eine ANDERE Person nebenbei erwähnt hat („Andrea hätte gern …“, "
+                   "„hab heute erfahren, dass …“). Die Person selbst sieht ihn NIE – alle anderen sehen ihn mit "
+                   "„geheimtipp_von“ und können nachfragen. Alle Details (Ort, Datum, Größe …) in die beschreibung.")
+    parameters = {"person": {"type": "string", "description": "Für wen der Wunsch ist: Name oder Verwandtschaftswort"},
+                  **_WISH_FIELDS}
+    required = ("person", "titel")
+
+    def run(self, actor: Actor, args: dict) -> dict:
+        wish = self._wishes.add_tip(actor, args["person"], presenter.details_from_args(args))
+        return {"id": wish.id, "fuer": wish.person_name, "titel": wish.title, "geheimtipp": True}
+
+
 class ShowWishes(WishTool):
     name = "wuensche_anzeigen"
     description = "Zeigt die Wunschliste einer Person mit Status (offen / von dir reserviert / besorgt <Name>)."
@@ -262,7 +276,7 @@ class ToolRegistry:
     @classmethod
     def standard(cls, wishes: WishService, family: FamilyService, relations: RelationService,
                  contact: AdminContact, api_keys: ApiKeyService) -> "ToolRegistry":
-        return cls([ListPersons(family), AddPerson(family), AddWish(wishes), ShowWishes(wishes), Reserve(wishes), Unreserve(wishes),
+        return cls([ListPersons(family), AddPerson(family), AddWish(wishes), AddTip(wishes), ShowWishes(wishes), Reserve(wishes), Unreserve(wishes),
                     MyReservations(wishes), EditWish(wishes), RemoveWish(wishes),
                     AddRelation(relations), RemoveRelation(relations), ShowRelatives(relations),
                     ContactAdmin(contact), AboutMe(relations), RequestApiKey(api_keys), RevokeApiKeys(api_keys)])

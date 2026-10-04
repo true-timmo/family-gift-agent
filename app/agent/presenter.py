@@ -29,6 +29,8 @@ def wish(w: Wish, **extra) -> dict:
     if display := shop_markdown(w.details.shop, w.details.url):
         result["shop_anzeige"] = display
         result.pop("link", None)     # steckt schon im Link – sonst baut das Modell gern eine Link-Spalte
+    if w.secret:                     # nur andere bekommen Geheimtipps zu sehen (siehe Wish.hidden_from)
+        result["geheimtipp_von"] = w.creator_name
     return result | extra
 
 

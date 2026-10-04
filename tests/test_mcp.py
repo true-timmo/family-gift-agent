@@ -132,7 +132,7 @@ def test_mcp_ablauf(fam, http):
     assert init.status_code == 200 and "Überraschung" in init.json()["result"]["instructions"]
 
     names = {t["name"] for t in client.rpc("tools/list").json()["result"]["tools"]}
-    assert {"wunsch_hinzufuegen", "reservieren", "ueber_mich", "ki_zugang_sperren"} <= names
+    assert {"wunsch_hinzufuegen", "geheimtipp_eintragen", "reservieren", "ueber_mich", "ki_zugang_sperren"} <= names
     assert "ki_zugang_anfordern" not in names                     # neue Schlüssel nur im Familien-Chat
 
     assert client.call("ueber_mich")["name"] == "Lena"
@@ -140,8 +140,9 @@ def test_mcp_ablauf(fam, http):
     assert client.call("reservieren", wunsch_id=w)["status"] == "von dir reserviert"
     # Papa (per Schlüssel) sieht auch über MCP nicht, dass Lena die Pfanne besorgt
     papa = McpClient(http, issue_key(fam, "Papa"), in_path=True)
+    client.call("geheimtipp_eintragen", person="Papa", titel="Messerblock")   # Lena merkt sich einen Tipp
     own = json.dumps(papa.call("wuensche_anzeigen", person="Papa"))
-    assert "Pfanne" in own and "Lena" not in own and "reserv" not in own
+    assert "Pfanne" in own and "Lena" not in own and "reserv" not in own and "Messerblock" not in own
 
 
 def test_fehler_als_tool_fehler(fam, http):
