@@ -8,6 +8,7 @@ import logging
 from openai import AsyncOpenAI
 
 from .agent import ChatAgent, SystemPrompt, ToolRegistry
+from .agent.privacy import Pseudonymizer
 from .config import Settings
 from .domain.notifications import Notifier
 from .mail import BackgroundMailNotifier, ConsoleTransport, Mailer, MailTransport, SmtpTransport
@@ -61,4 +62,5 @@ class Container:
         self.tools = ToolRegistry.standard(self.wishes, self.family, self.relations, self.admin_contact,
                                            self.api_keys)
         self.agent = ChatAgent(llm_client or ChatAgent.client_for(settings.llm), settings.llm, self.tools,
-                               self.chat_history, SystemPrompt(self.family, self.relations, self.admins))
+                               self.chat_history, SystemPrompt(self.family, self.relations, self.admins),
+                               privacy=lambda: Pseudonymizer(self.family.persons()))
