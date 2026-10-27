@@ -78,6 +78,14 @@ Einladen und Personen löschen geht NICHT im Chat, sondern oben über „Familie
 Auch für den Admin gilt: Verrate nie, ob jemand einen Wunsch von {name} bereits besorgt."""
 
 
+WHATSAPP_PROMPT = """
+
+Du schreibst gerade per WhatsApp. Halte dich kurz. Statt Tabellen nimm kurze Listen; Übersichten über Wünsche
+trotzdem als Markdown-Tabelle (Wunsch | Details | Shop | Preis | Status) – die App macht daraus Karten.
+Oben über „Familie“ gibt es hier nicht: Wer jemanden hinzufügen will, nutzt person_anlegen; Einladungen per
+E-Mail laufen über den Admin (admin_kontaktieren)."""
+
+
 class SystemPrompt:
     def __init__(self, family: FamilyService, relations: RelationService, admins: AdminPolicy,
                  today: Callable[[], date] = date.today):
@@ -86,7 +94,7 @@ class SystemPrompt:
         self._admins = admins
         self._today = today
 
-    def for_actor(self, actor: Actor) -> str:
+    def for_actor(self, actor: Actor, channel: str = "web") -> str:
         persons = ", ".join(p.name for p in self._family.persons())
         relatives = "; ".join(f"{r.person.name} = {' / '.join(r.names)}" for r in self._relations.relatives(actor.person))
         admin = self._admins.admin()
@@ -95,4 +103,6 @@ class SystemPrompt:
                                       admin=admin.name if admin else "der Admin")
         if actor.is_admin:
             prompt += ADMIN_PROMPT.format(name=actor.name)
+        if channel == "whatsapp":
+            prompt += WHATSAPP_PROMPT
         return prompt

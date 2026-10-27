@@ -51,6 +51,24 @@ class LlmSettings:
 
 
 @dataclass(frozen=True)
+class WhatsAppSettings:
+    """WhatsApp-Bot über WAHA (WhatsApp HTTP API) im Nachbar-Container. Ohne WAHA_API_KEY ist er aus."""
+    api_key: str = ""
+    hmac_key: str = ""           # WAHA signiert jeden Webhook damit (HMAC-SHA512)
+    url: str = "http://waha:3000"
+    session: str = "default"
+
+    @property
+    def enabled(self) -> bool:
+        return bool(self.api_key and self.hmac_key)
+
+    @classmethod
+    def from_env(cls) -> "WhatsAppSettings":
+        return cls(api_key=_env("WAHA_API_KEY"), hmac_key=_env("WHATSAPP_HOOK_HMAC_KEY"),
+                   url=_env("WAHA_URL", cls.url))
+
+
+@dataclass(frozen=True)
 class Settings:
     db_path: str = "/app/data/geschenke.db"
     app_url: str = "https://geschenke.nordhain-gmbh.de"
@@ -60,6 +78,7 @@ class Settings:
     api_key_days: int = 30       # Gültigkeit persönlicher KI-Zugänge (MCP)
     smtp: SmtpSettings = field(default_factory=SmtpSettings)
     llm: LlmSettings = field(default_factory=LlmSettings)
+    whatsapp: WhatsAppSettings = field(default_factory=WhatsAppSettings)
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -72,4 +91,5 @@ class Settings:
             api_key_days=int(_env("API_KEY_DAYS", "30")),
             smtp=SmtpSettings.from_env(),
             llm=LlmSettings.from_env(),
+            whatsapp=WhatsAppSettings.from_env(),
         )

@@ -48,7 +48,9 @@ class AdminCli:
     def cmd_abmelden(self, args) -> None:
         person = self._c.family.require(args.name)
         sessions, keys = self._c.sessions.end_all(person), self._c.api_keys.revoke_all(person)
-        print(f"{sessions} Sitzung(en) und {keys} KI-Zugang/Zugänge von '{person.name}' beendet.")
+        chats = self._c.whatsapp_chats.delete_all_for(person.id)
+        print(f"{sessions} Sitzung(en), {keys} KI-Zugang/Zugänge und {chats} WhatsApp-Verbindung(en) "
+              f"von '{person.name}' beendet.")
 
     def cmd_person_loeschen(self, args) -> None:
         admin = self._c.admins.admin()

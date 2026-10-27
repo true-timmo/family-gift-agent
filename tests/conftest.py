@@ -31,10 +31,11 @@ class Family:
 
     MEMBERS = (("Mama", "mama@example.de"), ("Papa", "papa@example.de"), ("Lena", "lena@example.de"), ("Oma", None))
 
-    def __init__(self, path, members=MEMBERS, **settings):
+    def __init__(self, path, members=MEMBERS, services: dict | None = None, **settings):
         self.notifier = RecordingNotifier()
         self.mails = RecordingTransport()
-        self.c = Container(Settings(db_path=str(path), **settings), notifier=self.notifier, mail_transport=self.mails)
+        self.c = Container(Settings(db_path=str(path), **settings), notifier=self.notifier, mail_transport=self.mails,
+                           **(services or {}))
         self.db = self.c.database
         self.ids = {name: self.c.family.add(name, email).id for name, email in members}
 
