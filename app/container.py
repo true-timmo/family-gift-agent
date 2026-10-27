@@ -12,18 +12,20 @@ from .agent.privacy import Pseudonymizer
 from .config import Settings
 from .domain.notifications import Notifier
 from .mail import BackgroundMailNotifier, ConsoleTransport, Mailer, MailTransport, SmtpTransport
-from .services import (AdminContact, AdminPolicy, ApiKeyService, EmailDirectory, FamilyService, InvitationService, LoginCodeService,
-                       MailRateLimiter, Guardianship, PersonRemovalService, PersonResolver, RelationService, RemovalNotices,
-                       SessionService, WishService)
-from .storage import (ApiKeyRepository, ChatRepository, Database, InviteRepository, LoginCodeRepository, MailLog, PersonRepository,
-                      RelationRepository, SessionRepository, WishRepository)
+from .services import (AdminContact, AdminPolicy, ApiKeyService, EmailDirectory, FamilyService, Guardianship,
+                       InvitationService, LoginCodeService, MailRateLimiter, PersonRemovalService, PersonResolver,
+                       RelationService, RemovalNotices, SessionService, WishService)
+from .storage import (ApiKeyRepository, ChatRepository, Database, InviteRepository, LoginCodeRepository, MailLog,
+                      PersonRepository, RelationRepository, SessionRepository, WhatsAppChatRepository, WishRepository)
+from .whatsapp import WahaClient, WhatsAppBot
 
 log = logging.getLogger("uvicorn.error")
 
 
 class Container:
     def __init__(self, settings: Settings, *, database: Database | None = None, notifier: Notifier | None = None,
-                 mail_transport: MailTransport | None = None, llm_client: AsyncOpenAI | None = None):
+                 mail_transport: MailTransport | None = None, llm_client: AsyncOpenAI | None = None,
+                 whatsapp_client: WahaClient | None = None):
         self.settings = settings
         db = self.database = database or Database(settings.db_path)
 
@@ -35,6 +37,7 @@ class Container:
         sessions = SessionRepository(db)
         relations = RelationRepository(db)
         api_keys = ApiKeyRepository(db)
+        whatsapp_chats = WhatsAppChatRepository(db)
         self.chat_history = ChatRepository(db)
 
         transport = mail_transport or (ConsoleTransport() if settings.smtp.debug else SmtpTransport(settings.smtp))
@@ -54,7 +57,7 @@ class Container:
         self.sessions = SessionService(sessions)
         self.invitations = InvitationService(db, persons, invites, mail_limit, emails, self.notifier)
         self.removals = PersonRemovalService(db, persons, wishes, invites, codes, mail_log, sessions,
-                                             self.chat_history, relations, api_keys, notices)
+                                             self.chat_history, relations, api_keys, whatsapp_chats, notices)
 
         self.admin_contact = AdminContact(self.admins, mail_limit, self.notifier)
         self.api_keys = ApiKeyService(api_keys, mail_limit, self.notifier, settings.api_key_days)
@@ -64,3 +67,10 @@ class Container:
         self.agent = ChatAgent(llm_client or ChatAgent.client_for(settings.llm), settings.llm, self.tools,
                                self.chat_history, SystemPrompt(self.family, self.relations, self.admins),
                                privacy=lambda: Pseudonymizer(self.family.persons()))
+
+        # WhatsApp-Bot (nur wenn WAHA in .env eingerichtet ist)
+        self.whatsapp_chats = whatsapp_chats
+        self.whatsapp = None
+        if settings.whatsapp.enabled or whatsapp_client:
+            self.whatsapp = WhatsAppBot(whatsapp_client or WahaClient(settings.whatsapp), whatsapp_chats, self.family,
+                                        self.login_codes, self.mailer, self.admins, self.agent)

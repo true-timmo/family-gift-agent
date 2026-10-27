@@ -10,7 +10,7 @@ from starlette.routing import Route
 from ..container import Container
 from ..domain import errors
 from .mcp_gateway import McpGateway, RedactKeysFilter
-from .routes import auth, chat, family
+from .routes import auth, chat, family, whatsapp
 from .security import FailedAttempts, SessionCookie
 
 STATIC = Path(__file__).parent.parent / "static"
@@ -45,7 +45,7 @@ def create_app(c: Container) -> FastAPI:
     app.state.failed_attempts = FailedAttempts()
     app.add_exception_handler(errors.DomainError, _domain_error)
 
-    for module in (auth, family, chat):
+    for module in (auth, family, chat, whatsapp):
         app.include_router(module.router)
     app.include_router(auth.login)
     # MCP für eigene KI-Assistenten: Schlüssel im Header oder (für einfache Programme) in der Adresse

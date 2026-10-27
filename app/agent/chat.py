@@ -78,13 +78,13 @@ class ChatAgent:
             timeout=90,
         )
 
-    async def reply(self, actor: Actor, text: str) -> AsyncIterator[Event]:
+    async def reply(self, actor: Actor, text: str, channel: str = "web") -> AsyncIterator[Event]:
         """Verarbeitet eine Nachricht und liefert Ereignisse: text / tool / model / error / done.
 
         Ans Modell geht alles pseudonymisiert (siehe privacy.py); Nutzer und Verlauf sehen Klartext.
         """
         privacy = self._privacy()
-        system = f"{self._system_prompt.for_actor(actor)}\n\n{privacy.instructions}"
+        system = f"{self._system_prompt.for_actor(actor, channel)}\n\n{privacy.instructions}"
         messages = [{"role": "system", "content": privacy.mask(system)},
                     *({"role": m["role"], "content": privacy.mask(m["content"])} for m in self._history.recent(actor.id)),
                     {"role": "user", "content": privacy.mask(text)}]

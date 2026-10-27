@@ -84,6 +84,14 @@ CREATE TABLE IF NOT EXISTS api_keys (
     revoked_at    INTEGER
 );
 
+-- WhatsApp-Chats: wem gehört welcher Chat? person_id NULL = Zuordnung läuft noch (Name → Code aus der Mail)
+CREATE TABLE IF NOT EXISTS whatsapp_chats (
+    chat_id      TEXT PRIMARY KEY,                 -- z.B. 4917…@c.us
+    person_id    INTEGER REFERENCES persons(id),
+    pending_name TEXT,                             -- genannter Name, für den ein Code verschickt wurde
+    updated_at   INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS chat_messages (
     id          INTEGER PRIMARY KEY,
     person_id   INTEGER NOT NULL REFERENCES persons(id),

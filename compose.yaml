@@ -35,3 +35,30 @@ services:
       - traefik.http.middlewares.geschenke-ratelimit.ratelimit.average=20
       - traefik.http.middlewares.geschenke-ratelimit.ratelimit.period=1m
       - traefik.http.middlewares.geschenke-ratelimit.ratelimit.burst=30
+
+  # WhatsApp-Bot: WAHA (WhatsApp HTTP API) koppelt sich wie ein weiteres Gerät an die Bot-Nummer.
+  # Nur mit Profil „whatsapp“ (COMPOSE_PROFILES=whatsapp in .env); Schlüssel siehe .env.example.
+  waha:
+    image: devlikeapro/waha:gows@sha256:1ae3c6a994ee97e5039bf41103193d7bf9175f1a31db73ba89bdeed6277901bc   # 2026.9.2
+    container_name: geschenke-waha
+    profiles: [whatsapp]
+    restart: unless-stopped
+    environment:
+      WHATSAPP_DEFAULT_ENGINE: GOWS            # ohne Browser – spart Speicher
+      WAHA_API_KEY: ${WAHA_API_KEY:-}
+      WHATSAPP_HOOK_URL: http://agent:8000/api/whatsapp/webhook
+      WHATSAPP_HOOK_EVENTS: message
+      WHATSAPP_HOOK_HMAC_KEY: ${WHATSAPP_HOOK_HMAC_KEY:-}
+      WHATSAPP_START_SESSION: default
+      WHATSAPP_RESTART_ALL_SESSIONS: "True"
+      WAHA_DASHBOARD_ENABLED: "False"
+      WHATSAPP_SWAGGER_ENABLED: "False"
+      WAHA_PRINT_QR: "False"
+      WAHA_LOG_LEVEL: warn                     # keine Nachrichteninhalte im Log
+      TZ: Europe/Berlin
+    volumes:
+      - ./data/waha:/app/.sessions             # Kopplung bleibt bei Updates erhalten
+    ports:
+      - "127.0.0.1:3005:3000"                  # nur lokal: QR-Code zum Koppeln abrufen
+    mem_limit: 768m
+    cpus: 1.0

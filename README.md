@@ -33,6 +33,22 @@ Familienstatus und Verwandtschaft bleiben erhalten – ohne Namen sind sie nicht
 Grenze: Namen, die die App noch nicht kennt, bleiben stehen. Über MCP gilt das nicht – dort wählt jede Person
 ihr eigenes Modell und schreibt ihm ohnehin mit echten Namen.
 
+## WhatsApp-Bot
+
+Familienmitglieder können dem Assistenten auch per WhatsApp schreiben. [WAHA](https://waha.devlike.pro)
+(Engine GOWS) koppelt sich wie ein weiteres Gerät an die Bot-Nummer und meldet neue Nachrichten per Webhook
+(`/api/whatsapp/webhook`, HMAC-SHA512-signiert); die App antwortet über die WAHA-API.
+
+- **Zuordnung:** Wer zum ersten Mal schreibt, nennt seinen Namen und bekommt den Anmeldecode per E-Mail; die
+  Antwort verrät nicht, ob es den Namen gibt. Danach gehört der Chat dieser Person. „abmelden“ trennt ihn.
+- Gleicher Assistent wie im Web (Regeln, Überraschungsschutz, Pseudonymisierung), Tabellen werden zu Karten.
+- Gegen Sperren: nur Antworten auf eingehende Nachrichten, „gelesen“ + „schreibt …“, keine Gruppen.
+- **Hinweis:** inoffizieller Weg über WhatsApp Web – verstößt gegen die WhatsApp-Bedingungen, die Nummer kann
+  gesperrt werden. Das Handy mit der Bot-Nummer muss mindestens alle 14 Tage online sein.
+
+Einrichten: Schlüssel und `COMPOSE_PROFILES=whatsapp` in `.env` (siehe `.env.example`), `docker compose up -d`,
+dann einmalig koppeln (QR-Code: `curl -H "X-Api-Key: …" localhost:3005/api/default/auth/qr?format=image`).
+
 ## Eigene KI anbinden (MCP)
 
 Registrierte Familienmitglieder können die Wunschliste als **MCP-Server** in ihren eigenen KI-Assistenten

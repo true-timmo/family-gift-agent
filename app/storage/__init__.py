@@ -6,7 +6,8 @@ from .invites import InviteRepository
 from .logins import LoginCodeRepository, MailLog, SessionRepository
 from .persons import PersonRepository
 from .relations import RelationRepository
+from .whatsapp import WhatsAppChatRepository
 from .wishes import WishRepository
 
 __all__ = ["ApiKeyRepository", "ChatRepository", "Database", "InviteRepository", "LoginCodeRepository", "MailLog",
-           "PersonRepository", "RelationRepository", "SessionRepository", "WishRepository"]
+           "PersonRepository", "RelationRepository", "SessionRepository", "WhatsAppChatRepository", "WishRepository"]
