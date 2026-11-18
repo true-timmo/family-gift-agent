@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.domain.errors import PermissionDeniedError, RateLimitError
-from app.domain.notifications import ApiKeyIssued
+from app.domain.notifications import ApiKeyExpiring, ApiKeyIssued
 from app.mail import Mailer
 from app.web import create_app
 from app.web.mcp_gateway import RedactKeysFilter
@@ -171,3 +171,42 @@ def test_schluessel_in_anderen_headern(fam, http, header, value):
     r = http.post("/mcp", headers={header: value.format(key=key), "Accept": "application/json, text/event-stream"},
                   json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}})
     assert r.status_code == 200 and r.json()["result"]["tools"]
+
+
+# --- Erinnerung vor Ablauf ----------------------------------------------------------
+
+def expire_in(fam, days):
+    fam.db.execute("UPDATE api_keys SET expires_at = strftime('%s','now') + ?", (int(days * 86400),))
+
+
+def test_erinnerung_kurz_vor_ablauf(fam):
+    key = issue_key(fam, "Papa")
+    fam.c.api_keys.person(key)                                     # benutzt
+    expire_in(fam, 10)
+    assert fam.c.api_keys.send_reminders() == 0                   # noch zu früh
+    expire_in(fam, 2)
+    assert fam.c.api_keys.send_reminders() == 1
+    reminder = fam.notifier.sent[-1]
+    assert isinstance(reminder, ApiKeyExpiring) and reminder.recipient_email == "papa@example.de"
+    assert fam.c.api_keys.send_reminders() == 0                   # nur einmal
+
+
+def test_keine_erinnerung_wenn_unbenutzt_gesperrt_oder_erneuert(fam):
+    issue_key(fam, "Papa")
+    expire_in(fam, 2)
+    assert fam.c.api_keys.send_reminders() == 0                   # nie benutzt
+    fam.db.execute("UPDATE api_keys SET last_used_at = 1")
+    fam.reset_mail_limit()
+    issue_key(fam, "Papa")                                         # schon erneuert (läuft später ab)
+    assert fam.c.api_keys.send_reminders() == 0
+    fam.db.execute("DELETE FROM api_keys WHERE expires_at > strftime('%s','now') + 3 * 86400")
+    fam.c.api_keys.revoke_all(fam.person("Papa"))
+    assert fam.c.api_keys.send_reminders() == 0                   # gesperrt
+
+
+def test_erinnerungs_mail():
+    transport = RecordingTransport()
+    mailer = Mailer(transport, "absender@example.de", "https://geschenke.example.de")
+    asyncio.run(mailer.send_notification(ApiKeyExpiring("p@example.de", "Papa", 1_900_000_000)))
+    assert transport.messages[0]["Subject"] == "Dein KI-Zugang zur Geschenke-Liste läuft bald ab"
+    assert "läuft am 17.03.2030 ab" in transport.last_text() and "Ich möchte einen MCP-Zugang" in transport.last_text()

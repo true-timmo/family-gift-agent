@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from ..domain.errors import PermissionDeniedError, RateLimitError
 from ..domain.models import Actor, Person
-from ..domain.notifications import ApiKeyIssued, Notifier
+from ..domain.notifications import ApiKeyExpiring, ApiKeyIssued, Notifier
 from ..domain.values import masked_email
 from ..storage import ApiKeyRepository
 from ..storage.database import DAY, now
@@ -24,6 +24,7 @@ class KeySent:
 
 class ApiKeyService:
     MAX_VALID = 5       # je Person, z.B. für mehrere Geräte/Programme
+    REMIND_DAYS = 3     # so viele Tage vor Ablauf kommt eine Erinnerung
 
     def __init__(self, keys: ApiKeyRepository, mail_limit: MailRateLimiter, notifier: Notifier, valid_days: int):
         self._keys = keys
@@ -56,3 +57,11 @@ class ApiKeyService:
 
     def revoke_all(self, person: Person) -> int:
         return self._keys.revoke_all(person.id)
+
+    def send_reminders(self) -> int:
+        """Erinnert einmal pro Schlüssel kurz vor Ablauf – nur wenn er benutzt wurde und es keinen neueren gibt."""
+        due = self._keys.expiring(before=now() + self.REMIND_DAYS * DAY)
+        for key in due:
+            self._keys.mark_reminded(key.token_hash)
+            self._notifier.publish(ApiKeyExpiring(key.person.email, key.person.name, key.expires_at))
+        return len(due)

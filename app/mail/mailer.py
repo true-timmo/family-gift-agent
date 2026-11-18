@@ -6,8 +6,12 @@ from email.utils import formataddr, make_msgid
 from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescape
 
 from ..domain.models import IssuedInvite
-from ..domain.notifications import AdminMessage, ApiKeyIssued, NewRegistration, Notification, WishRemoved
+from ..domain.notifications import AdminMessage, ApiKeyExpiring, ApiKeyIssued, NewRegistration, Notification, WishRemoved
 from .transport import MailTransport
+
+
+def _date(timestamp: int) -> str:
+    return datetime.fromtimestamp(timestamp).strftime("%d.%m.%Y")
 
 
 class Mailer:
@@ -43,6 +47,10 @@ class Mailer:
                 await self._send_admin_message(notification)
             case ApiKeyIssued():
                 await self._send_api_key(notification)
+            case ApiKeyExpiring():
+                await self._send(notification.recipient_email, "Dein KI-Zugang zur Geschenke-Liste läuft bald ab",
+                                 "api_key_expiring", name=notification.recipient_name,
+                                 valid_until=_date(notification.expires_at))
 
     async def _send_wish_removed(self, n: WishRemoved) -> None:
         where = ("von der eigenen Wunschliste" if n.wished_by == n.removed_by
@@ -68,7 +76,7 @@ class Mailer:
         endpoint = f"{self._app_url}/mcp"
         await self._send(n.recipient_email, "Dein KI-Zugang zur Geschenke-Liste", "api_key", name=n.recipient_name,
                          key=n.key, endpoint=endpoint, secret_url=f"{endpoint}/{n.key}",
-                         valid_until=datetime.fromtimestamp(n.expires_at).strftime("%d.%m.%Y"))
+                         valid_until=_date(n.expires_at))
 
     async def _send(self, to: str, subject: str, template: str, reply_to: str | None = None, **context) -> None:
         context |= {"app_url": self._app_url, "reply_to": reply_to}

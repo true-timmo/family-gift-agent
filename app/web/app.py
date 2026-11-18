@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.routing import Route
 
 from ..container import Container
+from ..jobs import periodic
 from ..domain import errors
 from .mcp_gateway import McpGateway, RedactKeysFilter
 from .routes import auth, chat, family
@@ -36,7 +37,7 @@ def create_app(c: Container) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
-        async with mcp.lifespan():
+        async with mcp.lifespan(), periodic(3600, c.api_keys.send_reminders, "Erinnerung KI-Zugang"):
             yield
 
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)

@@ -114,6 +114,7 @@ class Database:
     _ADDED_COLUMNS = (
         ("persons", "gender", "TEXT"),                          # "w" / "m" / NULL
         ("wishes", "secret", "INTEGER NOT NULL DEFAULT 0"),    # 1 = Geheimtipp, die Person selbst sieht ihn nie
+        ("api_keys", "reminded_at", "INTEGER"),                 # Erinnerung vor Ablauf verschickt
     )
 
     def _migrate(self) -> None:

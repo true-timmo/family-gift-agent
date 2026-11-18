@@ -39,7 +39,8 @@ Registrierte Familienmitglieder können die Wunschliste als **MCP-Server** in ih
 einbinden (Claude, ChatGPT, Cursor …). Den Zugang gibt es auf Nachfrage im Chat („Ich möchte einen MCP-Zugang“):
 Der API-Schlüssel kommt **nur per E-Mail** (nie in den Chat), gilt 30 Tage (`API_KEY_DAYS`) und handelt mit
 genau den Rechten seiner Besitzerin – Überraschungsschutz inklusive. Sperren: im Chat „Sperre meine KI-Zugänge“
-oder `app.cli abmelden "<Name>"`.
+oder `app.cli abmelden "<Name>"`. Drei Tage vor Ablauf kommt eine Erinnerungs-Mail (einmal, nur für benutzte
+Schlüssel ohne neueren Nachfolger).
 
 - `POST /mcp` mit Header `Authorization: Bearer <Schlüssel>` (empfohlen) – oder `x-access-token` bzw.
   `x-api-key` mit dem Schlüssel (z.B. für Claude-Connectoren)

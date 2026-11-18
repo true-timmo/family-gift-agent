@@ -1,0 +1,15 @@
+{% extends "layout.txt" %}
+{% block body %}
+Hallo {{ name }},
+
+dein KI-Zugang zur Geschenke-Liste (MCP, z.B. für Claude oder ChatGPT) läuft am {{ valid_until }} ab.
+Danach kann dein KI-Assistent nicht mehr auf die Wunschliste zugreifen.
+
+So geht es weiter:
+1) Schreib im Chat der Geschenke-Liste: „Ich möchte einen MCP-Zugang“.
+2) Du bekommst eine E-Mail mit dem neuen Schlüssel.
+3) Trag ihn in deinem KI-Assistenten ein – dort, wo jetzt der alte steht
+   (z.B. beim Header „x-access-token“ oder in der Adresse …/mcp/<Schlüssel>).
+
+Brauchst du den Zugang nicht mehr, musst du nichts tun.
+{% endblock %}
