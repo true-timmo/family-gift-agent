@@ -1,5 +1,6 @@
 """Gesprächslogik: schickt den Chat an OpenRouter, führt Tool-Aufrufe aus, streamt die Antwort."""
 import json
+import logging
 from dataclasses import dataclass, field
 from typing import AsyncIterator, Callable
 
@@ -11,6 +12,8 @@ from ..storage import ChatRepository
 from .privacy import Pseudonymizer
 from .prompts import SystemPrompt
 from .tools import ToolRegistry
+
+log = logging.getLogger("uvicorn.error")
 
 Event = dict   # {"type": "text" | "tool" | "model" | "error" | "done", …} – so geht es per SSE an die Oberfläche
 
@@ -99,6 +102,7 @@ class ChatAgent:
                         answer += shown
                         yield {"type": "text", "text": shown}
             except Exception as e:  # Netzwerk, Überlastung aller Modelle, ungültige Antwort …
+                log.warning("Sprachmodell nicht erreichbar (%s): %s", type(e).__name__, str(e)[:300])
                 yield {"type": "error", "text": f"Der Assistent ist gerade nicht erreichbar ({type(e).__name__}). "
                                                 "Bitte gleich nochmal versuchen."}
                 break
@@ -123,16 +127,22 @@ class ChatAgent:
             self._history.add(actor.id, "assistant", answer.strip())
         yield {"type": "done"}
 
+    def _routing(self) -> dict:
+        """OpenRouter-Optionen: nur Anbieter, die Anfragen weder speichern noch zum Training nutzen;
+        bei Überlastung oder Wegfall eines Modells automatisch auf die Ausweichmodelle."""
+        routing: dict = {"provider": {"data_collection": "deny"}}
+        if self._settings.fallback_models:
+            routing["models"] = [self._settings.model, *self._settings.fallback_models]
+        return routing
+
     async def _stream(self, messages: list[dict], round_: _Round) -> AsyncIterator[str]:
-        models = self._settings.fallback_models
         stream = await self._client.chat.completions.create(
             model=self._settings.model,
             messages=messages,
             tools=self._tools.schemas(),
             stream=True,
             max_tokens=self.MAX_TOKENS,
-            # OpenRouter weicht bei Überlastung automatisch auf die nächsten Modelle aus
-            extra_body={"models": [self._settings.model, *models]} if models else None,
+            extra_body=self._routing(),
         )
         async for chunk in stream:
             if delta := round_.absorb(chunk):

@@ -68,7 +68,7 @@ def test_system_prompt_und_ausweichmodelle(fam):
     llm = FakeLlm([chunk("Hallo")])
     run(agent_for(fam, llm, fallback=("b/model",)), fam.actor("Mama", admin=True), "Hi")
     request = llm.requests[0]
-    assert request["extra_body"] == {"models": ["test/model", "b/model"]}
+    assert request["extra_body"] == {"provider": {"data_collection": "deny"}, "models": ["test/model", "b/model"]}
     system = request["messages"][0]["content"]
     assert f"Du sprichst gerade mit: Person{fam.ids['Mama']}" in system and "ist Admin" in system
     assert "Wunsch | Details | Shop | Preis" in system and "Größe, Farbe" in system
