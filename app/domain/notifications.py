@@ -41,7 +41,15 @@ class ApiKeyIssued:
         return f"ApiKeyIssued(recipient_name={self.recipient_name!r}, key=***)"
 
 
-Notification = WishRemoved | NewRegistration | AdminMessage | ApiKeyIssued
+@dataclass(frozen=True)
+class ApiKeyExpiring:
+    """Ein benutzter KI-Zugang läuft bald ab – Hinweis, wie man einen neuen bekommt."""
+    recipient_email: str
+    recipient_name: str
+    expires_at: int
+
+
+Notification = WishRemoved | NewRegistration | AdminMessage | ApiKeyIssued | ApiKeyExpiring
 
 
 class Notifier(Protocol):
