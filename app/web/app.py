@@ -37,7 +37,8 @@ def create_app(c: Container) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
-        async with mcp.lifespan(), periodic(3600, c.api_keys.send_reminders, "Erinnerung KI-Zugang"):
+        async with (mcp.lifespan(), periodic(3600, c.api_keys.send_reminders, "Erinnerung KI-Zugang"),
+                    periodic(3600, c.presence.send_reminders, "Erinnerung lange nicht da")):
             yield
 
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)

@@ -6,7 +6,8 @@ from email.utils import formataddr, make_msgid
 from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescape
 
 from ..domain.models import IssuedInvite
-from ..domain.notifications import AdminMessage, ApiKeyExpiring, ApiKeyIssued, NewRegistration, Notification, WishRemoved
+from ..domain.notifications import (AdminMessage, ApiKeyExpiring, ApiKeyIssued, ComeBackReminder, NewRegistration,
+                                    Notification, WishRemoved)
 from .transport import MailTransport
 
 
@@ -54,6 +55,8 @@ class Mailer:
                 await self._send(notification.recipient_email, "Dein KI-Zugang zur Geschenke-Liste läuft bald ab",
                                  "api_key_expiring", name=notification.recipient_name,
                                  valid_until=_date(notification.expires_at))
+            case ComeBackReminder():
+                await self._send_come_back(notification)
 
     async def _send_wish_removed(self, n: WishRemoved) -> None:
         where = ("von der eigenen Wunschliste" if n.wished_by == n.removed_by
@@ -74,6 +77,13 @@ class Mailer:
         if self._admin_email:
             await self._send(self._admin_email, f"Nachricht von {n.sender}", "admin_message", reply_to=n.sender_email,
                              sender=n.sender, text=n.text)
+
+    async def _send_come_back(self, n: ComeBackReminder) -> None:
+        total = sum(count for _, count in n.new_wishes)
+        what = "1 neuer Wunsch" if total == 1 else f"{total} neue Wünsche"
+        subject = f"{what} auf der Geschenke-Liste" if total else "Schau mal wieder auf die Geschenke-Liste"
+        await self._send(n.recipient_email, subject, "come_back", name=n.recipient_name, new_wishes=n.new_wishes,
+                         total=total)
 
     async def _send_api_key(self, n: ApiKeyIssued) -> None:
         endpoint = f"{self._app_url}/mcp"

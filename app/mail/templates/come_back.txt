@@ -1,0 +1,16 @@
+{% extends "layout.txt" %}
+{% block body %}
+Hallo {{ name }},
+
+du warst schon länger nicht mehr auf der Geschenke-Liste der Familie.
+{% if new_wishes %}
+Seit deinem letzten Besuch ist einiges dazugekommen:
+{% for person, count in new_wishes %}
+- {{ person }}: {{ count }} neue{{ "r Wunsch" if count == 1 else " Wünsche" }}
+{% endfor %}
+{% endif %}
+Schau doch mal wieder vorbei – und pflege bei der Gelegenheit gern auch deine eigene Wunschliste:
+{{ app_url }}
+
+Diese Erinnerung kommt höchstens einmal im Monat und nur, solange du nicht vorbeischaust.
+{% endblock %}
