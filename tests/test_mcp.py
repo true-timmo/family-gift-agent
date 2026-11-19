@@ -41,7 +41,7 @@ def test_schluessel_nur_per_mail(fam):
 def test_schluessel_gilt_einen_monat(fam):
     key = issue_key(fam, "Papa")
     days = (fam.notifier.sent[-1].expires_at - fam.db.scalar("SELECT created_at FROM api_keys")) / 86400
-    assert days == 30
+    assert days == 90
     fam.db.execute("UPDATE api_keys SET expires_at = 0")
     assert fam.c.api_keys.person(key) is None
 

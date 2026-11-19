@@ -270,7 +270,7 @@ class ApiKeyTool(Tool, ABC):
 class RequestApiKey(ApiKeyTool):
     name = "ki_zugang_anfordern"
     description = ("NUR wenn die Person ausdrücklich danach fragt (API-Schlüssel, MCP, eigene KI wie Claude/ChatGPT "
-                   "anbinden): schickt ihr per E-Mail einen persönlichen Zugang, gültig 1 Monat. Der Schlüssel "
+                   "anbinden): schickt ihr per E-Mail einen persönlichen Zugang, gültig 3 Monate. Der Schlüssel "
                    "erscheint nie im Chat. Nicht von dir aus anbieten.")
 
     def run(self, actor: Actor, args: dict) -> dict:
