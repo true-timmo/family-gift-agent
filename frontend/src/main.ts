@@ -6,6 +6,7 @@ import { initHelpDialogs } from "./help.ts";
 import { ChatView } from "./views/chat.ts";
 import { FamilyPanel } from "./views/family.ts";
 import { LoginView } from "./views/login.ts";
+import { PasskeyOffer } from "./views/passkey-offer.ts";
 
 class App {
   private readonly api = new Api(() => this.showLogin());
@@ -21,6 +22,7 @@ class App {
   private readonly family = new FamilyPanel(byId("family-drawer"), byId("family"),
     [byId<HTMLButtonElement>("family-btn"), byId<HTMLButtonElement>("family-handle")], this.api,
     (question) => this.chat.setDraft(question));
+  private readonly passkeyOffer = new PasskeyOffer(byId("passkey-offer"), this.api);
   private readonly adminSwitch = new AdminSwitch(byId<HTMLButtonElement>("admin-toggle"),
     (on) => this.family.setAdminMode(on));
 
@@ -56,9 +58,11 @@ class App {
     this.family.close();
     this.switchTo("chat");
     this.chat.load(me.verlauf);
+    void this.passkeyOffer.maybeShow(me.name);
   }
 
   private showLogin(): void {
+    this.passkeyOffer.hide();
     this.switchTo("login");
     this.login.show();
   }

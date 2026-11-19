@@ -8,6 +8,16 @@ class NameIn(BaseModel):
 
 class LoginStartIn(NameIn):
     resend: bool = False      # True = neuen Code schicken, auch wenn der letzte noch gilt
+    code: bool = False        # True = Code per Mail, auch wenn Face ID eingerichtet ist
+
+
+class OptionalNameIn(BaseModel):
+    name: str | None = Field(default=None, max_length=60)
+
+
+class PasskeyIn(BaseModel):
+    credential: dict          # Antwort des Geräts (WebAuthn, als JSON)
+    device: str = Field(default="", max_length=40)
 
 
 class RegisterIn(NameIn):

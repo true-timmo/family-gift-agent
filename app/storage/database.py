@@ -88,6 +88,24 @@ CREATE TABLE IF NOT EXISTS api_keys (
     revoked_at    INTEGER
 );
 
+-- Passkeys (Face ID & Co.): je Gerät ein öffentlicher Schlüssel; der geheime bleibt auf dem Gerät
+CREATE TABLE IF NOT EXISTS passkeys (
+    credential_id  TEXT PRIMARY KEY,                     -- base64url
+    person_id      INTEGER NOT NULL REFERENCES persons(id),
+    public_key     BLOB NOT NULL,
+    sign_count     INTEGER NOT NULL DEFAULT 0,
+    device         TEXT,                                  -- z.B. „iPhone“ (nur zur Anzeige)
+    created_at     INTEGER NOT NULL,
+    last_used_at   INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS passkey_challenges (
+    challenge   TEXT PRIMARY KEY,                         -- base64url
+    purpose     TEXT NOT NULL,                            -- 'register' | 'login'
+    person_id   INTEGER,                                  -- register: wer; login: erwartete Person oder NULL
+    expires_at  INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS chat_messages (
     id          INTEGER PRIMARY KEY,
     person_id   INTEGER NOT NULL REFERENCES persons(id),

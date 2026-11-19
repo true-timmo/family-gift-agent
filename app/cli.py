@@ -5,7 +5,7 @@
   docker compose exec agent python -m app.cli person-neu "Mama" --email mama@example.de  # mit Login
   docker compose exec agent python -m app.cli email-setzen "Mama" neu@example.de
   docker compose exec agent python -m app.cli email-setzen "Mama" --entfernen            # Login sperren
-  docker compose exec agent python -m app.cli abmelden "Mama"                            # alle Geräte + KI-Zugänge
+  docker compose exec agent python -m app.cli abmelden "Mama"                    # alle Geräte, KI-Zugänge, Face ID
   docker compose exec agent python -m app.cli mail-test du@example.de                    # Mailversand prüfen
   docker compose exec agent python -m app.cli person-loeschen "Julian"                   # endgültig (als Admin)
 
@@ -42,13 +42,17 @@ class AdminCli:
     def cmd_email_setzen(self, args) -> None:
         self._c.family.set_email(args.name, None if args.entfernen else args.email)
         if args.entfernen:
-            self._c.api_keys.revoke_all(self._c.family.require(args.name))
+            person = self._c.family.require(args.name)
+            self._c.api_keys.revoke_all(person)
+            self._c.passkeys.revoke_all(person)
         print(f"Mail-Adresse für '{args.name}' {'entfernt' if args.entfernen else 'gesetzt'}.")
 
     def cmd_abmelden(self, args) -> None:
         person = self._c.family.require(args.name)
         sessions, keys = self._c.sessions.end_all(person), self._c.api_keys.revoke_all(person)
-        print(f"{sessions} Sitzung(en) und {keys} KI-Zugang/Zugänge von '{person.name}' beendet.")
+        passkeys = self._c.passkeys.revoke_all(person)
+        print(f"{sessions} Sitzung(en), {keys} KI-Zugang/Zugänge und {passkeys} Face-ID-Zugang/Zugänge "
+              f"von '{person.name}' beendet.")
 
     def cmd_person_loeschen(self, args) -> None:
         admin = self._c.admins.admin()
