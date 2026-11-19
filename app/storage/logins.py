@@ -25,28 +25,33 @@ def _login_code(row) -> LoginCode | None:
 
 
 class LoginCodeRepository:
-    """Pro Name höchstens ein aktiver Code."""
+    """Mehrere Codes je Name; „benutzbar“ = nicht abgelaufen und noch Versuche übrig."""
 
     def __init__(self, db: Database):
         self._db = db
 
-    def replace(self, name: str, email: str, code_hash: str, expires_at: int, register: bool,
-                link_hash: str | None = None) -> None:
+    def add(self, name: str, email: str, code_hash: str, link_hash: str, expires_at: int, register: bool) -> None:
         self._db.execute(
-            "INSERT OR REPLACE INTO otp_codes (name, email, code_hash, expires_at, attempts, register, link_hash) "
-            "VALUES (?, ?, ?, ?, 0, ?, ?)", (name, email, code_hash, expires_at, int(register), link_hash))
+            "INSERT INTO login_codes (name, email, code_hash, link_hash, expires_at, register) VALUES (?, ?, ?, ?, ?, ?)",
+            (name, email, code_hash, link_hash, expires_at, int(register)))
+        self._db.execute("DELETE FROM login_codes WHERE expires_at < ?", (now() - 86400,))   # Altlasten
 
-    def get(self, name: str) -> LoginCode | None:
-        return _login_code(self._db.one("SELECT * FROM otp_codes WHERE name = ?", (name,)))
+    def usable(self, name: str, max_attempts: int) -> list[LoginCode]:
+        """Benutzbare Codes, neueste zuerst."""
+        rows = self._db.all("SELECT * FROM login_codes WHERE name = ? AND expires_at > ? AND attempts < ? "
+                            "ORDER BY expires_at DESC", (name, now(), max_attempts))
+        return [_login_code(r) for r in rows]
 
     def by_link(self, link_hash: str) -> LoginCode | None:
-        return _login_code(self._db.one("SELECT * FROM otp_codes WHERE link_hash = ?", (link_hash,)))
+        return _login_code(self._db.one("SELECT * FROM login_codes WHERE link_hash = ?", (link_hash,)))
 
     def count_failure(self, name: str) -> None:
-        self._db.execute("UPDATE otp_codes SET attempts = attempts + 1 WHERE name = ?", (name,))
+        """Ein Fehlversuch zählt für alle noch gültigen Codes des Namens."""
+        self._db.execute("UPDATE login_codes SET attempts = attempts + 1 WHERE name = ? AND expires_at > ?",
+                         (name, now()))
 
     def delete(self, name: str) -> None:
-        self._db.execute("DELETE FROM otp_codes WHERE name = ?", (name,))
+        self._db.execute("DELETE FROM login_codes WHERE name = ?", (name,))
 
 
 class MailLog:

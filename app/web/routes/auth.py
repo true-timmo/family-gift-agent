@@ -1,7 +1,7 @@
 """Anmeldung.
 
   1. /api/login/start     Name eingeben → bekannte Person mit Mail: Code wird verschickt
-                                           (gilt noch einer aus einer früheren Mail, bleibt es bei dem)
+                                           (jeder Code gilt 10 Minuten, auch wenn neuere kommen)
                                          → offene Einladung: Hinweis aufs Postfach
                                          → sonst: Registrierung nötig
   2. /api/login/register  Name + Mail + Familien-Code → Code wird an die neue Mail verschickt
@@ -17,6 +17,7 @@ from ...container import Container
 from ...domain.errors import AuthenticationError, NotFoundError
 from ...domain.models import Actor, Person
 from ...domain.values import email_address, masked_email, person_name
+from ...storage.database import now
 from ..dependencies import container, current_actor, login_attempts, require_json, session_cookie
 from ..mail import mail_delivery
 from ..schemas import LoginStartIn, NameIn, RegisterIn, TokenIn, VerifyIn
@@ -48,9 +49,10 @@ async def start(data: LoginStartIn, c: Container = Depends(container)):
     name = person_name(data.name)
     person = c.family.get(name)
     if person and person.email:
-        # Code aus einer früheren Mail gilt noch (z.B. Fenster zwischendurch geschlossen) → keinen neuen schicken,
-        # sonst wäre der in der Mail ungültig. Einen neuen gibt es nur auf ausdrücklichen Wunsch.
-        if not data.resend and (until := c.login_codes.valid_until(person.name, person.email)):
+        # Gerade erst eine Mail verschickt (Versandlimit) und deren Code gilt noch → einfach dabei bleiben,
+        # statt mit „bitte warten“ zu antworten. Sonst kommt eine neue Mail; ältere Codes gelten trotzdem weiter.
+        until = c.login_codes.valid_until(person.name, person.email)
+        if until and not data.resend and c.login_codes.resend_allowed_at(person.name) > now():
             return _code_step(c, person.name, person.email, until, already_sent=True)
         return await _send_code(c, person.name, person.email, register=False)
     if invite := c.invitations.pending_for(name):

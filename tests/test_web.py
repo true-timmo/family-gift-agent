@@ -113,7 +113,7 @@ def test_neuer_code_auf_wunsch(fam, client):
 
 def test_abgelaufener_code_wird_neu_verschickt(fam, client):
     post(client, "/api/login/start", name="Papa")
-    fam.db.execute("UPDATE otp_codes SET expires_at = 0")
+    fam.db.execute("UPDATE login_codes SET expires_at = 0")
     fam.reset_mail_limit()
     assert not post(client, "/api/login/start", name="Papa").json()["schon_verschickt"]
     assert len(fam.mails.messages) == 2
@@ -145,3 +145,12 @@ def test_neue_version_kommt_sofort_im_browser_an(tmp_path, client):
     r = client.get("/")
     assert r.headers["cache-control"] == "no-cache" and 'href="/static/style.css?v=' in r.text
     assert client.get("/static/style.css").headers["cache-control"] == "no-cache"
+
+
+def test_name_erneut_nach_einer_minute_schickt_neue_mail_alter_code_gilt(fam, client):
+    post(client, "/api/login/start", name="Papa")
+    first = next(w for w in fam.mails.last_text().split() if w.isdigit() and len(w) == 6)
+    fam.db.execute("UPDATE otp_sends SET sent_at = sent_at - 61")       # eine Minute später
+    r = post(client, "/api/login/start", name="Papa").json()
+    assert not r["schon_verschickt"] and len(fam.mails.messages) == 2
+    assert post(client, "/api/login/verify", name="Papa", code=first).json() == {"name": "Papa"}

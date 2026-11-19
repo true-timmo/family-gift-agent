@@ -20,7 +20,7 @@ class IssuedCode:
 
 
 class LoginCodeService:
-    """6-stelliger Code per Mail: 10 Minuten gültig, 5 Versuche.
+    """6-stelliger Code per Mail: jeder 10 Minuten gültig (auch mehrere gleichzeitig), 5 Fehlversuche.
 
     Bei einer Registrierung (Familien-Code) entsteht die Person erst, wenn der Code bestätigt ist.
     """
@@ -55,21 +55,18 @@ class LoginCodeService:
         return person.name if person else name
 
     def issue(self, name: str, email: str, register: bool) -> IssuedCode:
-        """Neuer Code samt Anmelde-Link (ersetzt ältere) – mit Versandlimit."""
+        """Neuer Code samt Anmelde-Link – mit Versandlimit. Ältere Codes bleiben bis zu ihrem Ablauf gültig."""
         with self._db.transaction():
             self._mail_limit.register_send(name)
             issued = IssuedCode(new_code(), new_token(), now() + self.VALID_MINUTES * 60)
-            self._codes.replace(name, email, hash_code(name, issued.code), issued.expires_at, register,
-                                hash_token(issued.link_token))
+            self._codes.add(name, email, hash_code(name, issued.code), hash_token(issued.link_token),
+                            issued.expires_at, register)
         return issued
 
     def valid_until(self, name: str, email: str) -> int | None:
-        """Ablaufzeit eines noch benutzbaren Anmelde-Codes an diese Adresse – None, wenn es keinen gibt."""
-        pending = self._codes.get(name)
-        if (pending and not pending.register and pending.email.lower() == email.lower()
-                and pending.expires_at > now() and pending.attempts < self.MAX_ATTEMPTS):
-            return pending.expires_at
-        return None
+        """Ablaufzeit des neuesten noch benutzbaren Anmelde-Codes an diese Adresse – None, wenn es keinen gibt."""
+        return next((p.expires_at for p in self._codes.usable(name, self.MAX_ATTEMPTS)
+                     if not p.register and p.email.lower() == email.lower()), None)
 
     def resend_allowed_at(self, name: str) -> int:
         """Ab wann „Neuen Code schicken“ wieder geht (Versandlimit)."""
@@ -104,22 +101,24 @@ class LoginCodeService:
         attempts_left = None
         registered = False
         with self._db.transaction():
-            pending = self._codes.get(name)
-            if not pending or pending.expires_at < now() or pending.attempts >= self.MAX_ATTEMPTS:
+            usable = self._codes.usable(name, self.MAX_ATTEMPTS)
+            if not usable:
                 raise AuthenticationError("Der Code ist abgelaufen. Bitte einen neuen anfordern.")
-            if same_secret(pending.code_hash, hash_code(name, code.strip())):
-                self._codes.delete(name)
+            entered = hash_code(name, code.strip())
+            pending = next((p for p in usable if same_secret(p.code_hash, entered)), None)
+            if pending:
+                self._codes.delete(name)    # angemeldet → alle Codes des Namens erledigt
                 registered = self._complete_registration(pending)
             else:
                 # Fehlversuch zählen und committen – erst danach den Fehler melden
                 self._codes.count_failure(name)
-                attempts_left = self.MAX_ATTEMPTS - pending.attempts - 1
+                attempts_left = max(self.MAX_ATTEMPTS - p.attempts - 1 for p in usable)
         if attempts_left is not None:
             raise AuthenticationError(f"Der Code stimmt nicht. Noch {attempts_left} Versuch(e)." if attempts_left
                                       else "Der Code stimmt nicht. Bitte einen neuen anfordern.")
         if registered:
             self._notifier.publish(NewRegistration(pending.name))
-        return self._persons.by_name(name)
+        return self._persons.by_name(pending.name)
 
     def _complete_registration(self, pending: LoginCode) -> bool:
         """Legt nach einer Registrierung die Person an bzw. hinterlegt ihre Mail-Adresse."""

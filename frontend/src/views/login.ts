@@ -116,7 +116,7 @@ export class LoginView extends FormView<LoginState> {
     resendCode: async () => {
       const res = await this.requestCode(true);
       this.follow(res);
-      if (res?.step === "code") this.say("ok", "Neue Mail ist unterwegs – nimm den Code aus der neuesten Mail.");
+      if (res?.step === "code") this.say("ok", "Neue Mail ist unterwegs. Jeder Code aus den letzten 10 Minuten funktioniert.");
     },
     resendInvite: async (e) => {
       e.preventDefault();

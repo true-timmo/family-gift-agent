@@ -14,15 +14,19 @@ CREATE TABLE IF NOT EXISTS persons (
     created_at  INTEGER NOT NULL
 );
 
--- Einmal-Codes für die Anmeldung; pro Name höchstens einer aktiv
-CREATE TABLE IF NOT EXISTS otp_codes (
-    name        TEXT PRIMARY KEY COLLATE NOCASE,
+-- Einmal-Codes für die Anmeldung. Mehrere je Name dürfen gleichzeitig gelten (jeder 10 Minuten) –
+-- so funktioniert jede Mail, egal welche zuerst ankommt. Nach der Anmeldung werden alle gelöscht.
+CREATE TABLE IF NOT EXISTS login_codes (
+    id          INTEGER PRIMARY KEY,
+    name        TEXT NOT NULL COLLATE NOCASE,
     email       TEXT NOT NULL,
     code_hash   TEXT NOT NULL,
+    link_hash   TEXT,                                  -- Knopf „Jetzt anmelden“ in derselben Mail
     expires_at  INTEGER NOT NULL,
     attempts    INTEGER NOT NULL DEFAULT 0,
     register    INTEGER NOT NULL DEFAULT 0            -- 1 = legt nach Bestätigung Person/Mail an
 );
+CREATE INDEX IF NOT EXISTS login_codes_name ON login_codes (name);
 
 -- Einladungen per Mail: einmal verwendbar, befristet. Name und Mail legt der Einladende fest.
 -- Pro Person gibt es höchstens eine offene Einladung.
@@ -112,8 +116,7 @@ class Database:
 
     # Spalten, die nach dem ersten Start dazukamen: (Tabelle, Spalte, Definition)
     _ADDED_COLUMNS = (
-        ("persons", "gender", "TEXT"),
-        ("otp_codes", "link_hash", "TEXT"),                     # Anmelde-Knopf in der Mail (statt Code abtippen)                          # "w" / "m" / NULL
+        ("persons", "gender", "TEXT"),                          # "w" / "m" / NULL
         ("wishes", "secret", "INTEGER NOT NULL DEFAULT 0"),    # 1 = Geheimtipp, die Person selbst sieht ihn nie
         ("api_keys", "reminded_at", "INTEGER"),                 # Erinnerung vor Ablauf verschickt
         ("persons", "last_seen_at", "INTEGER"),                 # zuletzt in der App oder per KI-Zugang aktiv
@@ -125,8 +128,13 @@ class Database:
         ("persons", "last_seen_at"): "UPDATE persons SET last_seen_at = CAST(strftime('%s','now') AS INTEGER)",
     }
 
+    # Tabellen, die abgelöst wurden (Inhalt nur kurzlebig, darf weg)
+    _DROPPED_TABLES = ("otp_codes",)                            # → login_codes (mehrere Codes je Name)
+
     def _migrate(self) -> None:
-        """Ergänzt Spalten, die es in älteren Datenbanken noch nicht gibt."""
+        """Ergänzt Spalten, die es in älteren Datenbanken noch nicht gibt, und räumt abgelöste Tabellen weg."""
+        for table in self._DROPPED_TABLES:
+            self._conn.execute(f"DROP TABLE IF EXISTS {table}")
         for table, column, definition in self._ADDED_COLUMNS:
             columns = {row["name"] for row in self._conn.execute(f"PRAGMA table_info({table})")}
             if column not in columns:
