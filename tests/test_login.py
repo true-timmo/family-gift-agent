@@ -35,7 +35,7 @@ def test_code_nach_5_fehlversuchen_gesperrt(fam):
 
 def test_abgelaufener_code(fam):
     code = fam.c.login_codes.issue("Lena", "lena@example.de", register=False).code
-    fam.db.execute("UPDATE otp_codes SET expires_at = 0")
+    fam.db.execute("UPDATE login_codes SET expires_at = 0")
     with pytest.raises(AuthenticationError, match="abgelaufen"):
         fam.c.login_codes.verify("Lena", code)
 
@@ -116,15 +116,15 @@ def test_anmelde_link_meldet_einmal_an(fam):
         codes.verify("Mama", issued.code)
 
 
-def test_anmelde_link_abgelaufen_ersetzt_oder_falsch(fam):
+def test_anmelde_link_abgelaufen_oder_falsch(fam):
     codes = fam.c.login_codes
     first = codes.issue("Lena", "lena@example.de", register=False)
     fam.reset_mail_limit()
     second = codes.issue("Lena", "lena@example.de", register=False)
-    assert codes.link_owner(first.link_token) is None               # neuer Code ersetzt den alten Link
+    assert codes.link_owner(first.link_token) == "Lena"             # neuer Code ersetzt den alten nicht
     assert codes.link_owner("quatsch") is None and codes.link_owner("") is None
-    fam.db.execute("UPDATE otp_codes SET expires_at = 0")
-    assert codes.link_owner(second.link_token) is None
+    fam.db.execute("UPDATE login_codes SET expires_at = 0")
+    assert codes.link_owner(second.link_token) is None and codes.link_owner(first.link_token) is None
 
 
 def test_anmelde_link_schliesst_registrierung_ab(fam):
@@ -147,3 +147,56 @@ def test_versandlimit_sagt_wann_es_wieder_geht(fam):
     fam.db.execute("UPDATE otp_sends SET sent_at = sent_at - 61")
     with pytest.raises(RateLimitError, match="Minuten"):
         fam.c.login_codes.issue("Mama", "mama@example.de", register=False)
+
+
+# --- Mehrere Codes gleichzeitig -----------------------------------------------------------
+
+def three_codes(fam, name="Mama", email="mama@example.de"):
+    codes = []
+    for _ in range(3):
+        fam.reset_mail_limit()
+        codes.append(fam.c.login_codes.issue(name, email, register=False))
+    return codes
+
+
+@pytest.mark.parametrize("which", [0, 1, 2])
+def test_jeder_von_drei_codes_funktioniert(fam, which):
+    issued = three_codes(fam)
+    assert fam.c.login_codes.verify("Mama", issued[which].code).name == "Mama"
+    for other in issued:                                              # danach sind alle erledigt
+        with pytest.raises(AuthenticationError, match="abgelaufen"):
+            fam.c.login_codes.verify("Mama", other.code)
+
+
+def test_jeder_code_laeuft_nach_seinen_10_minuten_ab(fam):
+    first, second, _ = three_codes(fam)
+    fam.db.execute("UPDATE login_codes SET expires_at = 0 WHERE code_hash = (SELECT code_hash FROM login_codes "
+                   "ORDER BY id LIMIT 1)")
+    with pytest.raises(AuthenticationError, match="stimmt nicht"):
+        fam.c.login_codes.verify("Mama", first.code)                  # abgelaufen → zählt wie falsch
+    assert fam.c.login_codes.verify("Mama", second.code).name == "Mama"
+
+
+def test_fehlversuche_gelten_fuer_alle_codes(fam):
+    issued = three_codes(fam)
+    taken = {i.code for i in issued}
+    wrong_code = next(c for c in (f"{n:06d}" for n in range(1000)) if c not in taken)
+    for left in (4, 3, 2, 1):
+        with pytest.raises(AuthenticationError, match=f"Noch {left}"):
+            fam.c.login_codes.verify("Mama", wrong_code)
+    with pytest.raises(AuthenticationError, match="neuen anfordern"):
+        fam.c.login_codes.verify("Mama", wrong_code)
+    with pytest.raises(AuthenticationError, match="abgelaufen"):
+        fam.c.login_codes.verify("Mama", issued[0].code)              # 5 Fehlversuche: alle gesperrt
+    fam.reset_mail_limit()
+    fresh = fam.c.login_codes.issue("Mama", "mama@example.de", register=False)
+    assert fam.c.login_codes.verify("Mama", fresh.code).name == "Mama"   # neuer Code: neue Versuche
+
+
+def test_alte_code_tabelle_wird_abgeloest(tmp_path):
+    from app.storage.database import Database
+    db = Database(str(tmp_path / "alt.db"))
+    db.execute("CREATE TABLE otp_codes (name TEXT PRIMARY KEY)")
+    db = Database(str(tmp_path / "alt.db"))
+    tables = {r[0] for r in db.all("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    assert "otp_codes" not in tables and "login_codes" in tables
