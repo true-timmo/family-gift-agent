@@ -6,17 +6,23 @@ import { type FamilyHandlers, type FamilyState, familyTemplate, type PersonForm 
 
 export class FamilyPanel extends FormView<FamilyState> {
   private readonly api: Api;
-  private readonly toggle: HTMLButtonElement;
+  private readonly toggles: HTMLButtonElement[];
+  private readonly drawer: HTMLElement;
+  private isOpen = false;
   private readonly onAsk: (question: string) => void;
   private formKey = 0;
 
-  /** onAsk: Frage für den Chat, wenn jemand auf einen Namen tippt. */
-  constructor(root: HTMLElement, toggle: HTMLButtonElement, api: Api, onAsk: (question: string) => void) {
+  /** Ausziehbare Karte (drawer) mit Inhalt (root); toggles = Knopf „Familie“ oben und Henkel unten an der Karte.
+   *  onAsk: Frage für den Chat, wenn jemand auf einen Namen tippt. */
+  constructor(drawer: HTMLElement, root: HTMLElement, toggles: HTMLButtonElement[], api: Api,
+              onAsk: (question: string) => void) {
     super(root, { members: [], adminMode: false, form: null, busy: false, feedback: null });
     this.api = api;
-    this.toggle = toggle;
+    this.drawer = drawer;
+    this.toggles = toggles;
     this.onAsk = onAsk;
-    toggle.addEventListener("click", () => (this.root.hidden ? this.open() : this.close()));
+    for (const t of toggles) t.addEventListener("click", () => (this.isOpen ? this.close() : this.open()));
+    drawer.addEventListener("keydown", (e) => { if (e.key === "Escape") this.close(); });
   }
 
   /** Admin-Funktionen ein-/ausblenden (Schalter im Kopf). */
@@ -40,8 +46,15 @@ export class FamilyPanel extends FormView<FamilyState> {
   }
 
   private setOpen(open: boolean): void {
-    this.root.hidden = !open;
-    this.toggle.setAttribute("aria-expanded", String(open));
+    this.isOpen = open;
+    this.drawer.classList.toggle("open", open);
+    this.root.inert = !open; // zugeklappt: nicht per Tab erreichbar, für Screenreader verborgen
+    for (const t of this.toggles) t.setAttribute("aria-expanded", String(open));
+    this.handle?.setAttribute("aria-label", open ? "Familie zuklappen" : "Familie aufklappen");
+  }
+
+  private get handle(): HTMLButtonElement | undefined {
+    return this.toggles.find((t) => this.drawer.contains(t));
   }
 
   private async reload(): Promise<void> {

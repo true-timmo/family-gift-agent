@@ -34,7 +34,14 @@
     <button id="logout-btn" class="link">Abmelden</button>
   </header>
 
-  <section id="family" class="family" hidden></section>
+  <!-- Familie als ausziehbare Karte: Henkel am unteren Rand (▾ aufklappen / ▴ zuklappen), dazu der Knopf oben -->
+  <section id="family-drawer" class="family-drawer">
+    <div class="family-panel"><div class="family-clip"><div id="family" class="family" inert></div></div></div>
+    <button type="button" id="family-handle" class="family-handle" aria-controls="family" aria-expanded="false"
+      aria-label="Familie aufklappen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"
+          stroke-linejoin="round"/></svg></button>
+  </section>
 
   <section id="messages" aria-live="polite"></section>
 
