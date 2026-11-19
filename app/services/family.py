@@ -1,8 +1,8 @@
 """Personen der Familienliste verwalten."""
 from ..domain.errors import ConflictError, PermissionDeniedError
 from ..domain.models import FamilyMember, Person, PersonRemoval
-from ..storage import (ApiKeyRepository, ChatRepository, Database, InviteRepository, LoginCodeRepository, MailLog, PersonRepository,
-                       RelationRepository, SessionRepository, WishRepository)
+from ..storage import (ApiKeyRepository, ChatRepository, Database, InviteRepository, LoginCodeRepository, MailLog,
+                       PasskeyRepository, PersonRepository, RelationRepository, SessionRepository, WishRepository)
 from .directory import EmailDirectory, RemovalNotices
 
 
@@ -49,12 +49,13 @@ class PersonRemovalService:
     - Ihre Wünsche werden gelöscht; wer davon etwas reserviert hatte, wird benachrichtigt.
     - Ihre eigenen Reservierungen werden freigegeben (Geschenke sind wieder offen).
     - Wünsche und Einladungen, die sie für andere angelegt hat, bleiben – sie gelten dann als vom Admin.
-    - Sitzungen, KI-Zugänge, Chatverlauf, Codes und Verwandtschaftsangaben verschwinden.
+    - Sitzungen, KI-Zugänge, Face-ID-Zugänge, Chatverlauf, Codes und Verwandtschaftsangaben verschwinden.
     """
 
     def __init__(self, db: Database, persons: PersonRepository, wishes: WishRepository, invites: InviteRepository,
                  codes: LoginCodeRepository, mail_log: MailLog, sessions: SessionRepository, chat: ChatRepository,
-                 relations: RelationRepository, api_keys: ApiKeyRepository, notices: RemovalNotices):
+                 relations: RelationRepository, api_keys: ApiKeyRepository, passkeys: PasskeyRepository,
+                 notices: RemovalNotices):
         self._db = db
         self._persons = persons
         self._wishes = wishes
@@ -65,6 +66,7 @@ class PersonRemovalService:
         self._chat = chat
         self._relations = relations
         self._api_keys = api_keys
+        self._passkeys = passkeys
         self._notices = notices
 
     def remove(self, admin: Person, name: str) -> PersonRemoval:
@@ -91,4 +93,5 @@ class PersonRemovalService:
         self._mail_log.delete_for(person.name)
         self._relations.delete_all_for(person.id)
         self._api_keys.delete_all_for(person.id)
+        self._passkeys.delete_all_for(person.id)
         self._persons.delete(person.id)

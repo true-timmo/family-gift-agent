@@ -6,7 +6,10 @@
                                          → sonst: Registrierung nötig
   2. /api/login/register  Name + Mail + Familien-Code → Code wird an die neue Mail verschickt
   3. /api/login/verify    Name + Code → angemeldet (bei Registrierung: Konto wird jetzt angelegt)
-     – oder Knopf in der Mail (#anmelden=…): /api/login/link zeigt den Namen, /api/login/link/accept meldet an
+     – oder Knopf in der Mail (#anmelden=…)
+  Face ID (Passkey): /api/login/start antwortet mit step „passkey“, wenn eingerichtet;
+     /api/login/passkey/options + /api/login/passkey melden ohne Mail an (Einrichten: routes/passkeys.py)
+: /api/login/link zeigt den Namen, /api/login/link/accept meldet an
 
 Einladung per Mail (empfohlen): Der Link aus der Mail (#einladung=…) beweist die Adresse –
 /api/login/invite/accept meldet direkt an, ohne Code. Der Familien-Code ist nur ein optionaler Ausweg.
@@ -20,7 +23,7 @@ from ...domain.values import email_address, masked_email, person_name
 from ...storage.database import now
 from ..dependencies import container, current_actor, login_attempts, require_json, session_cookie
 from ..mail import mail_delivery
-from ..schemas import LoginStartIn, NameIn, RegisterIn, TokenIn, VerifyIn
+from ..schemas import LoginStartIn, NameIn, OptionalNameIn, PasskeyIn, RegisterIn, TokenIn, VerifyIn
 from ..security import AttemptGuard, SessionCookie
 
 router = APIRouter(prefix="/api")
@@ -48,6 +51,8 @@ def _sign_in(c: Container, cookie: SessionCookie, response: Response, person: Pe
 async def start(data: LoginStartIn, c: Container = Depends(container)):
     name = person_name(data.name)
     person = c.family.get(name)
+    if person and person.email and not data.resend and not data.code and c.passkeys.has_passkey(person):
+        return {"step": "passkey", "name": person.name}       # Face ID statt Mail; Code bleibt als Ausweg
     if person and person.email:
         # Gerade erst eine Mail verschickt (Versandlimit) und deren Code gilt noch → einfach dabei bleiben,
         # statt mit „bitte warten“ zu antworten. Sonst kommt eine neue Mail; ältere Codes gelten trotzdem weiter.
@@ -94,6 +99,20 @@ async def accept_login_link(data: TokenIn, response: Response, c: Container = De
                             attempts: AttemptGuard = Depends(login_attempts)):
     with attempts.counting():
         person = c.login_codes.verify_link(data.token)
+    return _sign_in(c, cookie, response, person)
+
+
+@login.post("/passkey/options")
+async def passkey_options(data: OptionalNameIn, c: Container = Depends(container)):
+    return c.passkeys.login_options(person_name(data.name) if data.name else None)
+
+
+@login.post("/passkey")
+async def passkey_login(data: PasskeyIn, response: Response, c: Container = Depends(container),
+                        cookie: SessionCookie = Depends(session_cookie),
+                        attempts: AttemptGuard = Depends(login_attempts)):
+    with attempts.counting():
+        person = c.passkeys.login(data.credential)
     return _sign_in(c, cookie, response, person)
 
 

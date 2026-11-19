@@ -4,9 +4,11 @@ from .chat import ChatRepository
 from .database import Database
 from .invites import InviteRepository
 from .logins import LoginCodeRepository, MailLog, SessionRepository
+from .passkeys import PasskeyChallengeRepository, PasskeyRepository, StoredPasskey
 from .persons import AbsentPerson, PersonRepository
 from .relations import RelationRepository
 from .wishes import WishRepository
 
-__all__ = ["AbsentPerson", "ApiKeyRepository", "ChatRepository", "Database", "InviteRepository", "LoginCodeRepository", "MailLog",
-           "PersonRepository", "RelationRepository", "SessionRepository", "WishRepository"]
+__all__ = ["AbsentPerson", "ApiKeyRepository", "ChatRepository", "Database", "InviteRepository",
+           "LoginCodeRepository", "MailLog", "PasskeyChallengeRepository", "PasskeyRepository", "PersonRepository",
+           "RelationRepository", "SessionRepository", "StoredPasskey", "WishRepository"]

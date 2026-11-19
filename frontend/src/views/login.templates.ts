@@ -5,6 +5,7 @@ export type Step =
   | { name: "name" }
   | { name: "invite"; person: string; inviter: string } // Link aus der Einladung geöffnet
   | { name: "link"; person: string } // Knopf aus der Anmelde-Mail geöffnet
+  | { name: "passkey"; person: string } // Face ID ist eingerichtet
   | { name: "invited"; person: string; email: string } // Einladung liegt im Postfach
   | { name: "register"; person: string } // erstes Mal, ohne Einladung
   | { name: "code"; email: string; validUntil: number; alreadySent: boolean; resendAt: number };
@@ -14,6 +15,8 @@ export interface LoginState {
   loginName: string;
   busy: boolean;
   feedback: Feedback;
+  biometric: string; // „Face ID“, „Fingerabdruck“ …
+  deviceUser: string | null; // auf diesem Gerät ist Face ID eingerichtet für …
 }
 
 export interface LoginHandlers {
@@ -24,6 +27,8 @@ export interface LoginHandlers {
   register(e: SubmitEvent): void;
   verify(e: SubmitEvent): void;
   resendCode(): void;
+  passkeyLogin(): void;
+  codeInstead(): void;
   back(): void;
 }
 
@@ -50,6 +55,12 @@ function resendButton(resendAt: number, busy: boolean, h: LoginHandlers): Templa
 function step(s: LoginState, h: LoginHandlers): TemplateResult {
   switch (s.step.name) {
     case "name": return html`
+      ${s.deviceUser ? html`
+        <div class="step passkey-start">
+          <button type="button" class="passkey-btn" ?disabled=${s.busy} @click=${h.passkeyLogin}>
+            Mit ${s.biometric} anmelden</button>
+          <p class="login-hint">als ${s.deviceUser} – oder unten einen anderen Namen eingeben</p>
+        </div>` : nothing}
       <form class="step" @submit=${h.submitName}>
         <label>Dein Name
           <input name="name" autocomplete="username" placeholder="z.B. Mama" required value=${s.loginName}></label>
@@ -68,6 +79,15 @@ function step(s: LoginState, h: LoginHandlers): TemplateResult {
         <p class="info big">Hallo <strong>${s.step.person}</strong>! 👋</p>
         ${submit("Jetzt anmelden", s.busy)}
       </form>`;
+
+    case "passkey": return html`
+      <div class="step">
+        <p class="info big">Hallo <strong>${s.step.person}</strong>! 👋</p>
+        <button type="button" class="passkey-btn" ?disabled=${s.busy} @click=${h.passkeyLogin}>
+          Mit ${s.biometric} anmelden</button>
+        <button type="button" class="link" ?disabled=${s.busy} @click=${h.codeInstead}>
+          Lieber einen Code per E-Mail schicken</button>
+      </div>`;
 
     case "invited": return html`
       <form class="step" @submit=${h.resendInvite}>
@@ -103,5 +123,5 @@ function step(s: LoginState, h: LoginHandlers): TemplateResult {
 export const loginTemplate = (s: LoginState, h: LoginHandlers): TemplateResult => html`
   ${step(s, h)}
   <p class="error ${s.feedback?.kind === "ok" ? "ok" : ""}" role="alert">${s.feedback?.text ?? ""}</p>
-  ${s.step.name === "name" || s.step.name === "invite" || s.step.name === "link" ? nothing
+  ${["name", "invite", "link"].includes(s.step.name) ? nothing
     : html`<button type="button" class="link" @click=${h.back}>← Anderer Name</button>`}`;

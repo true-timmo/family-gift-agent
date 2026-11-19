@@ -24,7 +24,8 @@ export type LoginStep =
   | { step: "code"; name: string; email: string; gueltig_bis: number; schon_verschickt: boolean;
       neuer_code_ab: number }
   | { step: "invited"; name: string; email: string }
-  | { step: "register"; name: string };
+  | { step: "register"; name: string }
+  | { step: "passkey"; name: string }; // Face ID ist eingerichtet – Code per Mail nur auf Wunsch
 
 export interface InviteInfo {
   name: string;
@@ -65,7 +66,19 @@ export class Api {
   }
 
   // --- Anmeldung ---
-  loginStart(name: string, resend = false) { return this.post<LoginStep>(`${LOGIN_PATH}/start`, { name, resend }); }
+  loginStart(name: string, opts: { resend?: boolean; code?: boolean } = {}) {
+    return this.post<LoginStep>(`${LOGIN_PATH}/start`, { name, ...opts });
+  }
+  passkeyLoginOptions(name?: string) {
+    return this.post<Record<string, unknown>>(`${LOGIN_PATH}/passkey/options`, { name: name ?? null });
+  }
+  passkeyLogin(credential: Record<string, unknown>) {
+    return this.post<{ name: string }>(`${LOGIN_PATH}/passkey`, { credential });
+  }
+  passkeySetupOptions() { return this.post<Record<string, unknown>>("/api/passkey/options"); }
+  passkeySetup(credential: Record<string, unknown>, device: string) {
+    return this.post<{ ok: boolean }>("/api/passkey", { credential, device });
+  }
   register(name: string, email: string, family_code: string) {
     return this.post<LoginStep>(`${LOGIN_PATH}/register`, { name, email, family_code });
   }

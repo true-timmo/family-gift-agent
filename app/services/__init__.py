@@ -5,9 +5,10 @@ from .directory import AdminPolicy, EmailDirectory, MailRateLimiter, RemovalNoti
 from .family import FamilyService, PersonRemovalService
 from .invitations import InvitationService
 from .login import LoginCodeService, SessionService
+from .passkeys import PasskeyService
 from .presence import Presence
 from .relations import Guardianship, PersonResolver, RelationService
 from .wishes import WishService
 
 __all__ = ["AdminContact", "ApiKeyService", "AdminPolicy", "EmailDirectory", "FamilyService", "Guardianship", "InvitationService", "LoginCodeService",
-           "MailRateLimiter", "PersonRemovalService", "PersonResolver", "Presence", "RelationService", "RemovalNotices", "SessionService", "WishService"]
+           "MailRateLimiter", "PasskeyService", "PersonRemovalService", "PersonResolver", "Presence", "RelationService", "RemovalNotices", "SessionService", "WishService"]

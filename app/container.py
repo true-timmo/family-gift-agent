@@ -13,10 +13,11 @@ from .config import Settings
 from .domain.notifications import Notifier
 from .mail import BackgroundMailNotifier, ConsoleTransport, Mailer, MailTransport, SmtpTransport
 from .services import (AdminContact, AdminPolicy, ApiKeyService, EmailDirectory, FamilyService, InvitationService, LoginCodeService,
-                       MailRateLimiter, Guardianship, PersonRemovalService, PersonResolver, Presence, RelationService, RemovalNotices,
+                       MailRateLimiter, Guardianship, PasskeyService, PersonRemovalService, PersonResolver, Presence, RelationService, RemovalNotices,
                        SessionService, WishService)
-from .storage import (ApiKeyRepository, ChatRepository, Database, InviteRepository, LoginCodeRepository, MailLog, PersonRepository,
-                      RelationRepository, SessionRepository, WishRepository)
+from .storage import (ApiKeyRepository, ChatRepository, Database, InviteRepository, LoginCodeRepository, MailLog,
+                      PasskeyChallengeRepository, PasskeyRepository, PersonRepository, RelationRepository,
+                      SessionRepository, WishRepository)
 
 log = logging.getLogger("uvicorn.error")
 
@@ -35,6 +36,7 @@ class Container:
         sessions = SessionRepository(db)
         relations = RelationRepository(db)
         api_keys = ApiKeyRepository(db)
+        passkeys = PasskeyRepository(db)
         self.chat_history = ChatRepository(db)
 
         transport = mail_transport or (ConsoleTransport() if settings.smtp.debug else SmtpTransport(settings.smtp))
@@ -55,8 +57,9 @@ class Container:
         self.sessions = SessionService(sessions, self.presence)
         self.invitations = InvitationService(db, persons, invites, mail_limit, emails, self.notifier)
         self.removals = PersonRemovalService(db, persons, wishes, invites, codes, mail_log, sessions,
-                                             self.chat_history, relations, api_keys, notices)
+                                             self.chat_history, relations, api_keys, passkeys, notices)
 
+        self.passkeys = PasskeyService(passkeys, PasskeyChallengeRepository(db), persons, settings.app_url)
         self.admin_contact = AdminContact(self.admins, mail_limit, self.notifier)
         self.api_keys = ApiKeyService(api_keys, mail_limit, self.notifier, settings.api_key_days,
                                       self.presence)

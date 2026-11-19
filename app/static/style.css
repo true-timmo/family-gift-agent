@@ -27,6 +27,14 @@ input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 
 .login button[type=submit] { background: var(--accent); color: var(--accent-text); border: 0; border-radius: 10px; padding: 11px; font-weight: 600; }
 .error { color: var(--error); min-height: 1.2em; margin: 12px 0 0; font-size: 14px; }
 .error.ok { color: var(--ok); font-weight: 600; }
+.passkey-btn { background: var(--accent); color: var(--accent-text); border: 0; border-radius: 12px; padding: 14px;
+  font-size: 18px; font-weight: 600; width: 100%; }
+.passkey-btn.small { width: auto; padding: 9px 16px; font-size: 15px; }
+.passkey-start { margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
+.passkey-offer { margin: 28px 16px 0; padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px;
+  background: var(--surface); }
+.passkey-offer-text { margin: 0; font-size: 15px; }
+.passkey-offer-actions { display: flex; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
 .login-hint { color: var(--muted); font-size: 14px; margin: 4px 0 0; }
 
 .chat { display: flex; flex-direction: column; height: 100dvh; max-width: 1100px; margin: 0 auto; }
