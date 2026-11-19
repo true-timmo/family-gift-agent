@@ -96,10 +96,12 @@ def _key_of(request: Request) -> str | None:
 
 
 class RedactKeysFilter(logging.Filter):
-    """Schwärzt Schlüssel in der Adresse (/mcp/<Schlüssel>) im Zugriffslog von uvicorn."""
-    _KEY_IN_PATH = re.compile(r"(/mcp/)[^\s/?\"]+")
+    """Schwärzt Geheimnisse in Adressen im Zugriffslog von uvicorn: KI-Schlüssel (/mcp/<Schlüssel>) sowie
+    Anmelde- und Einladungslinks aus älteren Mails (?anmelden=…, ?einladung=…; neue stehen hinter „#“ und
+    erreichen den Server gar nicht)."""
+    _SECRETS = re.compile(r"(/mcp/|[?&](?:anmelden|einladung)=)[^\s/?&#\"]+")
 
     def filter(self, record: logging.LogRecord) -> bool:
         if isinstance(record.args, tuple):
-            record.args = tuple(self._KEY_IN_PATH.sub(r"\1***", a) if isinstance(a, str) else a for a in record.args)
+            record.args = tuple(self._SECRETS.sub(r"\1***", a) if isinstance(a, str) else a for a in record.args)
         return True

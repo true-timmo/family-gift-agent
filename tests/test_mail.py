@@ -37,7 +37,7 @@ def test_einladungsmail():
     msg = t.messages[0]
     assert msg["Subject"] == "Timmo lädt dich zur Geschenke-Liste ein"
     assert "Dein Name zum Anmelden: Gisela" in t.last_text()
-    assert "https://geschenke.example.de/?einladung=abc" in html_of(msg)
+    assert "https://geschenke.example.de/#einladung=abc" in html_of(msg)
 
 
 def test_html_wird_escaped():

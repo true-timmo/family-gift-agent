@@ -28,7 +28,7 @@ export class LoginView extends FormView<LoginState> {
     this.goTo({ name: "code", email: pending.email, validUntil: pending.validUntil, alreadySent: true });
   }
 
-  /** Einladungslink (?einladung=…): erst zeigen, wer eingeladen ist – angenommen wird per Knopfdruck. */
+  /** Einladungslink (#einladung=…): erst zeigen, wer eingeladen ist – angenommen wird per Knopfdruck. */
   async showInvite(token: string): Promise<void> {
     this.inviteToken = token;
     const info = await this.run(() => this.api.inviteInfo(token));
@@ -37,7 +37,7 @@ export class LoginView extends FormView<LoginState> {
     else this.goTo({ name: "name" }, false);
   }
 
-  /** Knopf aus der Anmelde-Mail (?anmelden=…): erst zeigen, für wen – angemeldet wird per Knopfdruck
+  /** Knopf aus der Anmelde-Mail (#anmelden=…): erst zeigen, für wen – angemeldet wird per Knopfdruck
    *  (Mail-Programme öffnen Links teils selbst, das darf den Code nicht verbrauchen). */
   async showLoginLink(token: string): Promise<void> {
     this.loginToken = token;

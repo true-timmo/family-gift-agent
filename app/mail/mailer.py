@@ -26,10 +26,10 @@ class Mailer:
                                       trim_blocks=True, lstrip_blocks=True)
 
     def invite_link(self, token: str) -> str:
-        return f"{self._app_url}/?einladung={token}"
+        return f"{self._app_url}/#einladung={token}"   # hinter „#“: landet nie in Server-Logs
 
     def login_link(self, token: str) -> str:
-        return f"{self._app_url}/?anmelden={token}"
+        return f"{self._app_url}/#anmelden={token}"
 
     async def send_login_code(self, to: str, name: str, code: str, minutes: int, link_token: str) -> None:
         await self._send(to, f"{code} ist dein Anmeldecode für Geschenke", "login_code",

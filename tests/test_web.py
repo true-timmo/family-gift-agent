@@ -48,7 +48,7 @@ def test_einladung_annehmen_meldet_an(fam, client):
     assert post(client, "/api/einladung", name="Gisela", email="g@example.de").json() == \
         {"name": "Gisela", "email": "g@example.de"}
     link = fam.mails.last_text()
-    token = link.split("?einladung=")[1].split()[0]
+    token = link.split("#einladung=")[1].split()[0]
 
     client.cookies.clear()
     assert post(client, "/api/login/invite", token=token).json() == {"name": "Gisela", "eingeladen_von": "Mama"}
@@ -121,10 +121,26 @@ def test_abgelaufener_code_wird_neu_verschickt(fam, client):
 def test_anmelde_knopf_in_der_mail(fam, client):
     post(client, "/api/login/start", name="Lena")
     text = fam.mails.last_text()
-    token = text.split("?anmelden=")[1].split()[0]
+    token = text.split("#anmelden=")[1].split()[0]
     assert "anmelden=" in fam.mails.messages[-1].get_body(("html",)).get_content()
     assert post(client, "/api/login/link", token=token).json() == {"name": "Lena"}    # Vorschau, kein Login
     assert client.get("/api/me").status_code == 401
     assert post(client, "/api/login/link/accept", token=token).json() == {"name": "Lena"}
     assert client.get("/api/me").json()["name"] == "Lena"
     assert post(client, "/api/login/link", token=token).status_code == 404
+
+
+def test_neue_version_kommt_sofort_im_browser_an(tmp_path, client):
+    """Startseite und Dateien werden immer nachgefragt; Skript/Stylesheet tragen ihren Inhalts-Hash."""
+    from app.web.static_assets import IndexPage
+    (tmp_path / "dist").mkdir()
+    (tmp_path / "dist" / "app.js").write_text("console.log(1)")
+    (tmp_path / "index.html").write_text('<link href="/static/style.css"><script src="/static/dist/app.js"></script>')
+    html = IndexPage(tmp_path).response().body.decode()
+    assert '<script src="/static/dist/app.js?v=' in html and 'href="/static/style.css"' in html  # fehlt → ohne v
+    (tmp_path / "dist" / "app.js").write_text("console.log(2)")
+    assert IndexPage(tmp_path).response().body.decode() != html
+
+    r = client.get("/")
+    assert r.headers["cache-control"] == "no-cache" and 'href="/static/style.css?v=' in r.text
+    assert client.get("/static/style.css").headers["cache-control"] == "no-cache"
