@@ -71,6 +71,10 @@ class LoginCodeService:
             return pending.expires_at
         return None
 
+    def resend_allowed_at(self, name: str) -> int:
+        """Ab wann „Neuen Code schicken“ wieder geht (Versandlimit)."""
+        return self._mail_limit.next_allowed(name)
+
     def link_owner(self, link_token: str) -> str | None:
         """Für wen der Anmelde-Link gilt – meldet aber noch NICHT an (Mail-Programme öffnen Links teils selbst)."""
         pending = self._usable_link(link_token)

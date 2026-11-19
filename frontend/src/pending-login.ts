@@ -5,6 +5,7 @@ export interface PendingLogin {
   name: string;
   email: string;
   validUntil: number; // Unix-Sekunden
+  resendAt?: number; // ab wann „Neuen Code schicken“ wieder geht
 }
 
 type KeyValueStore = Pick<Storage, "getItem" | "setItem" | "removeItem">;

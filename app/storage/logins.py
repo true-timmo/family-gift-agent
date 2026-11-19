@@ -55,8 +55,10 @@ class MailLog:
     def __init__(self, db: Database):
         self._db = db
 
-    def count_since(self, name: str, since: int) -> int:
-        return self._db.scalar("SELECT COUNT(*) FROM otp_sends WHERE name = ? AND sent_at > ?", (name, since))
+    def times_since(self, name: str, since: int) -> list[int]:
+        """Versandzeitpunkte seit `since`, älteste zuerst."""
+        return [r[0] for r in self._db.all("SELECT sent_at FROM otp_sends WHERE name = ? AND sent_at > ? "
+                                           "ORDER BY sent_at", (name, since))]
 
     def record(self, name: str, at: int) -> None:
         self._db.execute("INSERT INTO otp_sends (name, sent_at) VALUES (?, ?)", (name, at))

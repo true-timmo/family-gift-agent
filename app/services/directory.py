@@ -43,6 +43,10 @@ class EmailDirectory:
         return bool(person and person.id != person_id)
 
 
+def _duration(seconds: int) -> str:
+    return f"{seconds} Sekunden" if seconds < 90 else f"{-(-seconds // 60)} Minuten"
+
+
 class MailRateLimiter:
     """Höchstens 1 Mail pro Minute und 5 pro Stunde je Name (Codes und Einladungen zusammen)."""
 
@@ -53,12 +57,20 @@ class MailRateLimiter:
 
     def register_send(self, name: str) -> None:
         at = now()
-        for period, limit in self.LIMITS:
-            if self._log.count_since(name, at - period) >= limit:
-                raise RateLimitError("Es wurde gerade erst eine Mail verschickt. "
-                                     "Bitte kurz warten und ins Postfach schauen.")
+        if (wait := self.next_allowed(name) - at) > 0:
+            raise RateLimitError("Es wurde gerade erst eine Mail verschickt. Bitte ins Postfach schauen "
+                                 f"oder noch {_duration(wait)} warten.")
         self._log.record(name, at)
         self._log.prune(at - DAY)
+
+    def next_allowed(self, name: str) -> int:
+        """Ab wann wieder eine Mail an diesen Namen gehen darf (Unix-Zeit; liegt sie zurück: sofort)."""
+        at, earliest = now(), 0
+        for period, limit in self.LIMITS:
+            sent = self._log.times_since(name, at - period)
+            if len(sent) >= limit:
+                earliest = max(earliest, sent[-limit] + period)
+        return earliest
 
 
 class RemovalNotices:

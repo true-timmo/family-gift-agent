@@ -1,4 +1,6 @@
 """Anmeldung per Einmal-Code, Registrierung per Familien-Code und Sitzungen."""
+import time
+
 import pytest
 
 from app.domain.errors import AuthenticationError, ConflictError, DomainError, RateLimitError
@@ -129,3 +131,19 @@ def test_anmelde_link_schliesst_registrierung_ab(fam):
     issued = fam.c.login_codes.issue("Tante Uschi", "uschi@example.de", register=True)
     assert fam.c.login_codes.verify_link(issued.link_token).email == "uschi@example.de"
     assert isinstance(fam.notifier.sent[-1], NewRegistration)
+
+
+def test_versandlimit_sagt_wann_es_wieder_geht(fam):
+    limiter = fam.c.login_codes
+    assert limiter.resend_allowed_at("Mama") == 0
+    fam.c.login_codes.issue("Mama", "mama@example.de", register=False)
+    wait = limiter.resend_allowed_at("Mama") - int(time.time())
+    assert 58 <= wait <= 60
+    with pytest.raises(RateLimitError, match="noch [0-9]+ Sekunden warten"):
+        fam.c.login_codes.issue("Mama", "mama@example.de", register=False)
+    for minutes in (2, 3, 4, 5):    # 5 pro Stunde: danach bis zum Ablauf der ältesten warten
+        fam.db.execute("UPDATE otp_sends SET sent_at = sent_at - 61")
+        fam.c.login_codes.issue("Mama", "mama@example.de", register=False)
+    fam.db.execute("UPDATE otp_sends SET sent_at = sent_at - 61")
+    with pytest.raises(RateLimitError, match="Minuten"):
+        fam.c.login_codes.issue("Mama", "mama@example.de", register=False)

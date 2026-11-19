@@ -31,3 +31,10 @@ test("kaputte Daten oder gesperrter Speicher stören nicht", () => {
   blocked.save({ name: "Mama", email: "x", validUntil: 9e9 });
   assert.equal(blocked.load(), null);
 });
+
+test("Wartezeit für „Neuen Code schicken“", async () => {
+  const { waitLabel } = await import("../src/views/login.templates.ts");
+  assert.equal(waitLabel(1000, 1000), "");
+  assert.equal(waitLabel(1042, 1000.2), "in 42 s");
+  assert.equal(waitLabel(1000 + 600, 1000), "in 10 Min.");
+});
