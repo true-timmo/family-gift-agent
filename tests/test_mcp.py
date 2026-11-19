@@ -164,6 +164,14 @@ def test_schluessel_im_log_geschwaerzt():
     assert "gsk_geheim123" not in record.getMessage() and "/mcp/***" in record.getMessage()
 
 
+@pytest.mark.parametrize("path", ["/?anmelden=geheim123", "/?einladung=geheim123", "/?x=1&anmelden=geheim123"])
+def test_links_aus_alten_mails_im_log_geschwaerzt(path):
+    record = logging.LogRecord("uvicorn.access", logging.INFO, "", 0, '%s - "%s %s HTTP/%s" %d',
+                               ("1.2.3.4", "GET", path, "1.1", 200), None)
+    RedactKeysFilter().filter(record)
+    assert "geheim123" not in record.getMessage() and "=***" in record.getMessage()
+
+
 @pytest.mark.parametrize("header,value", [("x-access-token", "{key}"), ("X-API-Key", "{key}"),
                                           ("x-access-token", "Bearer {key}")])
 def test_schluessel_in_anderen_headern(fam, http, header, value):

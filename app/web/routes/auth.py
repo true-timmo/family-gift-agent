@@ -6,9 +6,9 @@
                                          → sonst: Registrierung nötig
   2. /api/login/register  Name + Mail + Familien-Code → Code wird an die neue Mail verschickt
   3. /api/login/verify    Name + Code → angemeldet (bei Registrierung: Konto wird jetzt angelegt)
-     – oder Knopf in der Mail (?anmelden=…): /api/login/link zeigt den Namen, /api/login/link/accept meldet an
+     – oder Knopf in der Mail (#anmelden=…): /api/login/link zeigt den Namen, /api/login/link/accept meldet an
 
-Einladung per Mail (empfohlen): Der Link aus der Mail (?einladung=…) beweist die Adresse –
+Einladung per Mail (empfohlen): Der Link aus der Mail (#einladung=…) beweist die Adresse –
 /api/login/invite/accept meldet direkt an, ohne Code. Der Familien-Code ist nur ein optionaler Ausweg.
 """
 from fastapi import APIRouter, Depends, Request, Response

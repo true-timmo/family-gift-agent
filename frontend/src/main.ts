@@ -30,7 +30,8 @@ class App {
   }
 
   start(): void {
-    const params = new URLSearchParams(location.search);
+    // Links aus Mails: neu hinter „#“ (erreicht nie den Server), aus älteren Mails noch als „?…“
+    const params = new URLSearchParams(location.hash.slice(1) || location.search);
     const inviteToken = params.get("einladung");
     const loginToken = params.get("anmelden");
     if (inviteToken) {
@@ -42,6 +43,9 @@ class App {
     } else {
       this.showChat().catch(() => this.showLogin());
     }
+    // Link aus der Mail im schon offenen Tab geöffnet: Nur „#…“ ändert sich, die Seite lädt nicht neu
+    addEventListener("hashchange", () => { if (/(^|&)(anmelden|einladung)=/.test(location.hash.slice(1))) this.start(); },
+                     { once: true });
   }
 
   private async showChat(): Promise<void> {
