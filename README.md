@@ -37,7 +37,7 @@ ihr eigenes Modell und schreibt ihm ohnehin mit echten Namen.
 
 Registrierte Familienmitglieder können die Wunschliste als **MCP-Server** in ihren eigenen KI-Assistenten
 einbinden (Claude, ChatGPT, Cursor …). Den Zugang gibt es auf Nachfrage im Chat („Ich möchte einen MCP-Zugang“):
-Der API-Schlüssel kommt **nur per E-Mail** (nie in den Chat), gilt 30 Tage (`API_KEY_DAYS`) und handelt mit
+Der API-Schlüssel kommt **nur per E-Mail** (nie in den Chat), gilt 90 Tage (`API_KEY_DAYS`) und handelt mit
 genau den Rechten seiner Besitzerin – Überraschungsschutz inklusive. Sperren: im Chat „Sperre meine KI-Zugänge“
 oder `app.cli abmelden "<Name>"`. Drei Tage vor Ablauf kommt eine Erinnerungs-Mail (einmal, nur für benutzte
 Schlüssel ohne neueren Nachfolger).
