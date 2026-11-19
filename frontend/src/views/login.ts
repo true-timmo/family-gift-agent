@@ -1,6 +1,8 @@
-// Anmeldung: Name → Code aus der Mail. Mit Einladungslink: anzeigen und per Knopfdruck annehmen.
+// Anmeldung: Name → Code aus der Mail (oder Knopf in der Mail). Mit Einladungslink: anzeigen und per
+// Knopfdruck annehmen. Ein verschickter Code bleibt eingebbar, auch wenn das Fenster zwischendurch zu war.
 import type { Api, LoginStep } from "../api.ts";
 import { focus, formValues } from "../dom.ts";
+import { PendingLoginStore } from "../pending-login.ts";
 import { FormView } from "../view.ts";
 import { type LoginHandlers, type LoginState, loginTemplate, type Step } from "./login.templates.ts";
 
@@ -9,6 +11,8 @@ export class LoginView extends FormView<LoginState> {
   private readonly onSignedIn: () => void;
   private registration: { email: string; family_code: string } | null = null; // für „Neuen Code schicken“
   private inviteToken: string | null = null;
+  private loginToken: string | null = null;
+  private readonly pending = new PendingLoginStore();
 
   constructor(root: HTMLElement, api: Api, onSignedIn: () => void) {
     super(root, { step: { name: "name" }, loginName: "", busy: false, feedback: null });
@@ -16,8 +20,12 @@ export class LoginView extends FormView<LoginState> {
     this.onSignedIn = onSignedIn;
   }
 
+  /** Wurde vorhin ein Code verschickt, der noch gilt, geht es direkt mit der Code-Eingabe weiter. */
   show(): void {
-    this.goTo({ name: "name" });
+    const pending = this.pending.load();
+    if (!pending) return this.goTo({ name: "name" });
+    this.update({ loginName: pending.name });
+    this.goTo({ name: "code", email: pending.email, validUntil: pending.validUntil, alreadySent: true });
   }
 
   /** Einladungslink (?einladung=…): erst zeigen, wer eingeladen ist – angenommen wird per Knopfdruck. */
@@ -26,6 +34,16 @@ export class LoginView extends FormView<LoginState> {
     const info = await this.run(() => this.api.inviteInfo(token));
     history.replaceState(null, "", "/"); // Link nicht in Verlauf/Lesezeichen behalten
     if (info) this.goTo({ name: "invite", person: info.name, inviter: info.eingeladen_von });
+    else this.goTo({ name: "name" }, false);
+  }
+
+  /** Knopf aus der Anmelde-Mail (?anmelden=…): erst zeigen, für wen – angemeldet wird per Knopfdruck
+   *  (Mail-Programme öffnen Links teils selbst, das darf den Code nicht verbrauchen). */
+  async showLoginLink(token: string): Promise<void> {
+    this.loginToken = token;
+    const info = await this.run(() => this.api.loginLinkInfo(token));
+    history.replaceState(null, "", "/");
+    if (info) this.goTo({ name: "link", person: info.name });
     else this.goTo({ name: "name" }, false);
   }
 
@@ -42,20 +60,25 @@ export class LoginView extends FormView<LoginState> {
   private follow(res: LoginStep | undefined): void {
     if (res && "name" in res) this.update({ loginName: res.name }); // Schreibweise vom Server
     switch (res?.step) {
-      case "code": return this.goTo({ name: "code", email: res.email });
+      case "code":
+        this.pending.save({ name: res.name, email: res.email, validUntil: res.gueltig_bis });
+        return this.goTo({ name: "code", email: res.email, validUntil: res.gueltig_bis,
+                           alreadySent: res.schon_verschickt });
       case "invited": return this.goTo({ name: "invited", person: res.name, email: res.email });
       case "register": return this.goTo({ name: "register", person: res.name });
     }
   }
 
-  private requestCode() {
+  private requestCode(resend = false) {
     const { loginName } = this.state;
     const reg = this.registration;
-    return this.run(() => reg ? this.api.register(loginName, reg.email, reg.family_code) : this.api.loginStart(loginName));
+    return this.run(() => reg ? this.api.register(loginName, reg.email, reg.family_code)
+                              : this.api.loginStart(loginName, resend));
   }
 
   private signedIn(): void {
-    this.registration = this.inviteToken = null;
+    this.registration = this.inviteToken = this.loginToken = null;
+    this.pending.clear();
     this.update({ loginName: "", step: { name: "name" }, feedback: null });
     this.onSignedIn();
   }
@@ -76,7 +99,9 @@ export class LoginView extends FormView<LoginState> {
       if (await this.run(() => this.api.verify(this.state.loginName, code))) this.signedIn();
     },
     resendCode: async () => {
-      if (await this.requestCode()) this.say("ok", "Neuer Code ist unterwegs.");
+      const res = await this.requestCode(true);
+      this.follow(res);
+      if (res?.step === "code") this.say("ok", "Neuer Code ist unterwegs.");
     },
     resendInvite: async (e) => {
       e.preventDefault();
@@ -88,6 +113,14 @@ export class LoginView extends FormView<LoginState> {
       const token = this.inviteToken;
       if (token && await this.run(() => this.api.acceptInvite(token))) this.signedIn();
     },
-    back: () => this.goTo({ name: "name" }),
+    acceptLoginLink: async (e) => {
+      e.preventDefault();
+      const token = this.loginToken;
+      if (token && await this.run(() => this.api.acceptLoginLink(token))) this.signedIn();
+    },
+    back: () => {
+      this.pending.clear();
+      this.goTo({ name: "name" });
+    },
   };
 }

@@ -42,7 +42,7 @@ def test_einladungsmail():
 
 def test_html_wird_escaped():
     m, t = mailer()
-    asyncio.run(m.send_login_code("x@example.de", "<b>Eve</b>", "123456", 10))
+    asyncio.run(m.send_login_code("x@example.de", "<b>Eve</b>", "123456", 10, "tok"))
     assert "&lt;b&gt;Eve&lt;/b&gt;" in html_of(t.messages[0])
     assert "Hallo <b>Eve</b>," in t.last_text()                 # Text-Fassung unverändert
 

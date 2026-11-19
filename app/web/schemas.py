@@ -6,6 +6,10 @@ class NameIn(BaseModel):
     name: str = Field(max_length=60)
 
 
+class LoginStartIn(NameIn):
+    resend: bool = False      # True = neuen Code schicken, auch wenn der letzte noch gilt
+
+
 class RegisterIn(NameIn):
     email: str = Field(max_length=200)
     family_code: str = Field(max_length=100)

@@ -61,7 +61,8 @@ class AdminCli:
 
     def cmd_mail_test(self, args) -> None:
         try:
-            asyncio.run(self._c.mailer.send_login_code(args.an, "Test", "123456", LoginCodeService.VALID_MINUTES))
+            asyncio.run(self._c.mailer.send_login_code(args.an, "Test", "123456", LoginCodeService.VALID_MINUTES,
+                                                    "test-link-ohne-funktion"))
         except Exception as e:
             raise SystemExit(f"Versand fehlgeschlagen: {type(e).__name__}: {e}")
         print(f"Test-Mail an {args.an} verschickt.")

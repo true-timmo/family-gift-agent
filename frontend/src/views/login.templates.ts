@@ -4,9 +4,10 @@ import type { Feedback } from "../view.ts";
 export type Step =
   | { name: "name" }
   | { name: "invite"; person: string; inviter: string } // Link aus der Einladung geöffnet
+  | { name: "link"; person: string } // Knopf aus der Anmelde-Mail geöffnet
   | { name: "invited"; person: string; email: string } // Einladung liegt im Postfach
   | { name: "register"; person: string } // erstes Mal, ohne Einladung
-  | { name: "code"; email: string };
+  | { name: "code"; email: string; validUntil: number; alreadySent: boolean };
 
 export interface LoginState {
   step: Step;
@@ -18,12 +19,16 @@ export interface LoginState {
 export interface LoginHandlers {
   submitName(e: SubmitEvent): void;
   acceptInvite(e: SubmitEvent): void;
+  acceptLoginLink(e: SubmitEvent): void;
   resendInvite(e: SubmitEvent): void;
   register(e: SubmitEvent): void;
   verify(e: SubmitEvent): void;
   resendCode(): void;
   back(): void;
 }
+
+const clock = (unixSeconds: number) =>
+  new Date(unixSeconds * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 
 const submit = (label: string, busy: boolean) => html`<button type="submit" ?disabled=${busy}>${label}</button>`;
 
@@ -41,6 +46,12 @@ function step(s: LoginState, h: LoginHandlers): TemplateResult {
         <p class="info big">Hallo <strong>${s.step.person}</strong>! 👋</p>
         <p class="info"><strong>${s.step.inviter}</strong> hat dich zur Geschenke-Liste der Familie eingeladen.</p>
         ${submit("Los geht's", s.busy)}
+      </form>`;
+
+    case "link": return html`
+      <form class="step" @submit=${h.acceptLoginLink}>
+        <p class="info big">Hallo <strong>${s.step.person}</strong>! 👋</p>
+        ${submit("Jetzt anmelden", s.busy)}
       </form>`;
 
     case "invited": return html`
@@ -63,7 +74,8 @@ function step(s: LoginState, h: LoginHandlers): TemplateResult {
 
     case "code": return html`
       <form class="step" @submit=${h.verify}>
-        <p class="info">Wir haben einen Code an <strong>${s.step.email}</strong> geschickt.</p>
+        <p class="info">${s.step.alreadySent ? "Wir haben dir schon einen Code" : "Wir haben einen Code"} an
+          <strong>${s.step.email}</strong> geschickt. Er gilt bis <strong>${clock(s.step.validUntil)} Uhr</strong>.</p>
         <label>Code aus der Mail
           <input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7"
             required></label>
@@ -76,5 +88,5 @@ function step(s: LoginState, h: LoginHandlers): TemplateResult {
 export const loginTemplate = (s: LoginState, h: LoginHandlers): TemplateResult => html`
   ${step(s, h)}
   <p class="error" role="alert">${s.feedback?.text ?? ""}</p>
-  ${s.step.name === "name" || s.step.name === "invite" ? nothing
+  ${s.step.name === "name" || s.step.name === "invite" || s.step.name === "link" ? nothing
     : html`<button type="button" class="link" @click=${h.back}>← Anderer Name</button>`}`;

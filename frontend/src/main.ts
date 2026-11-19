@@ -30,10 +30,15 @@ class App {
   }
 
   start(): void {
-    const inviteToken = new URLSearchParams(location.search).get("einladung");
+    const params = new URLSearchParams(location.search);
+    const inviteToken = params.get("einladung");
+    const loginToken = params.get("anmelden");
     if (inviteToken) {
       this.switchTo("login");
       void this.login.showInvite(inviteToken);
+    } else if (loginToken) {
+      this.switchTo("login");
+      void this.login.showLoginLink(loginToken);
     } else {
       this.showChat().catch(() => this.showLogin());
     }

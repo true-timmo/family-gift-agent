@@ -14,6 +14,14 @@ class LoginCode:
     expires_at: int
     attempts: int
     register: bool       # True = legt nach Bestätigung Person bzw. Mail-Adresse an
+    link_hash: str | None = None
+
+
+def _login_code(row) -> LoginCode | None:
+    if not row:
+        return None
+    return LoginCode(row["name"], row["email"], row["code_hash"], row["expires_at"], row["attempts"],
+                     bool(row["register"]), row["link_hash"])
 
 
 class LoginCodeRepository:
@@ -22,17 +30,17 @@ class LoginCodeRepository:
     def __init__(self, db: Database):
         self._db = db
 
-    def replace(self, name: str, email: str, code_hash: str, expires_at: int, register: bool) -> None:
+    def replace(self, name: str, email: str, code_hash: str, expires_at: int, register: bool,
+                link_hash: str | None = None) -> None:
         self._db.execute(
-            "INSERT OR REPLACE INTO otp_codes (name, email, code_hash, expires_at, attempts, register) "
-            "VALUES (?, ?, ?, ?, 0, ?)", (name, email, code_hash, expires_at, int(register)))
+            "INSERT OR REPLACE INTO otp_codes (name, email, code_hash, expires_at, attempts, register, link_hash) "
+            "VALUES (?, ?, ?, ?, 0, ?, ?)", (name, email, code_hash, expires_at, int(register), link_hash))
 
     def get(self, name: str) -> LoginCode | None:
-        row = self._db.one("SELECT * FROM otp_codes WHERE name = ?", (name,))
-        if not row:
-            return None
-        return LoginCode(row["name"], row["email"], row["code_hash"], row["expires_at"], row["attempts"],
-                         bool(row["register"]))
+        return _login_code(self._db.one("SELECT * FROM otp_codes WHERE name = ?", (name,)))
+
+    def by_link(self, link_hash: str) -> LoginCode | None:
+        return _login_code(self._db.one("SELECT * FROM otp_codes WHERE link_hash = ?", (link_hash,)))
 
     def count_failure(self, name: str) -> None:
         self._db.execute("UPDATE otp_codes SET attempts = attempts + 1 WHERE name = ?", (name,))

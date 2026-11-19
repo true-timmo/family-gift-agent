@@ -1,4 +1,6 @@
-"""Anmeldung per Einmal-Code aus der Mail und Sitzungen."""
+"""Anmeldung per Einmal-Code aus der Mail (oder Knopf in derselben Mail) und Sitzungen."""
+from dataclasses import dataclass
+
 from ..domain.errors import AuthenticationError, ConflictError, PermissionDeniedError
 from ..domain.models import Person
 from ..domain.notifications import NewRegistration, Notifier
@@ -7,6 +9,13 @@ from ..storage.database import DAY, now
 from ..storage.logins import LoginCode
 from .directory import EmailDirectory, MailRateLimiter
 from .security import hash_code, hash_token, new_code, new_token, same_secret
+
+
+@dataclass(frozen=True)
+class IssuedCode:
+    code: str           # zum Abtippen
+    link_token: str     # für den Anmelde-Knopf in der Mail
+    expires_at: int
 
 
 class LoginCodeService:
@@ -44,13 +53,46 @@ class LoginCodeService:
             raise ConflictError("Diese E-Mail-Adresse wird schon verwendet.")   # bewusst ohne Namen (öffentlich)
         return person.name if person else name
 
-    def issue(self, name: str, email: str, register: bool) -> str:
-        """Neuer Code (ersetzt einen älteren) – mit Versandlimit."""
+    def issue(self, name: str, email: str, register: bool) -> IssuedCode:
+        """Neuer Code samt Anmelde-Link (ersetzt ältere) – mit Versandlimit."""
         with self._db.transaction():
             self._mail_limit.register_send(name)
-            code = new_code()
-            self._codes.replace(name, email, hash_code(name, code), now() + self.VALID_MINUTES * 60, register)
-        return code
+            issued = IssuedCode(new_code(), new_token(), now() + self.VALID_MINUTES * 60)
+            self._codes.replace(name, email, hash_code(name, issued.code), issued.expires_at, register,
+                                hash_token(issued.link_token))
+        return issued
+
+    def valid_until(self, name: str, email: str) -> int | None:
+        """Ablaufzeit eines noch benutzbaren Anmelde-Codes an diese Adresse – None, wenn es keinen gibt."""
+        pending = self._codes.get(name)
+        if (pending and not pending.register and pending.email.lower() == email.lower()
+                and pending.expires_at > now() and pending.attempts < self.MAX_ATTEMPTS):
+            return pending.expires_at
+        return None
+
+    def link_owner(self, link_token: str) -> str | None:
+        """Für wen der Anmelde-Link gilt – meldet aber noch NICHT an (Mail-Programme öffnen Links teils selbst)."""
+        pending = self._usable_link(link_token)
+        return pending.name if pending else None
+
+    def verify_link(self, link_token: str) -> Person:
+        """Anmeldung per Knopf aus der Mail: gleichwertig zum Code, ebenfalls nur einmal benutzbar."""
+        with self._db.transaction():
+            pending = self._usable_link(link_token)
+            if not pending:
+                raise AuthenticationError("Dieser Anmelde-Link ist abgelaufen oder wurde schon benutzt. "
+                                          "Bitte melde dich neu an.")
+            self._codes.delete(pending.name)
+            registered = self._complete_registration(pending)
+        if registered:
+            self._notifier.publish(NewRegistration(pending.name))
+        return self._persons.by_name(pending.name)
+
+    def _usable_link(self, link_token: str) -> LoginCode | None:
+        pending = self._codes.by_link(hash_token(link_token)) if link_token else None
+        if pending and pending.expires_at > now() and pending.attempts < self.MAX_ATTEMPTS:
+            return pending
+        return None
 
     def verify(self, name: str, code: str) -> Person:
         """Gibt die (ggf. neu angelegte) Person zurück oder wirft einen Fehler."""

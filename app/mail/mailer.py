@@ -27,9 +27,12 @@ class Mailer:
     def invite_link(self, token: str) -> str:
         return f"{self._app_url}/?einladung={token}"
 
-    async def send_login_code(self, to: str, name: str, code: str, minutes: int) -> None:
+    def login_link(self, token: str) -> str:
+        return f"{self._app_url}/?anmelden={token}"
+
+    async def send_login_code(self, to: str, name: str, code: str, minutes: int, link_token: str) -> None:
         await self._send(to, f"{code} ist dein Anmeldecode für Geschenke", "login_code",
-                         name=name, code=code, minutes=minutes)
+                         name=name, code=code, minutes=minutes, link=self.login_link(link_token))
 
     async def send_invite(self, invite: IssuedInvite, valid_days: int) -> None:
         """Einladung mit Link – bewusst einfach formuliert."""
