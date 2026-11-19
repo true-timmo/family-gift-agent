@@ -18,7 +18,8 @@ class App {
     input: byId<HTMLTextAreaElement>("input"),
     send: byId<HTMLButtonElement>("send"),
   }, this.api);
-  private readonly family = new FamilyPanel(byId("family"), byId<HTMLButtonElement>("family-btn"), this.api,
+  private readonly family = new FamilyPanel(byId("family-drawer"), byId("family"),
+    [byId<HTMLButtonElement>("family-btn"), byId<HTMLButtonElement>("family-handle")], this.api,
     (question) => this.chat.setDraft(question));
   private readonly adminSwitch = new AdminSwitch(byId<HTMLButtonElement>("admin-toggle"),
     (on) => this.family.setAdminMode(on));
