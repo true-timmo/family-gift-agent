@@ -38,6 +38,15 @@ class WishRepository:
         return [_wish(r) for r in self._db.all(
             f"{_SELECT} WHERE w.person_id = ? AND w.deleted_at IS NULL ORDER BY w.created_at", (person_id,))]
 
+    def new_for_others_since(self, person_id: int, since: int) -> list[tuple[str, int]]:
+        """Wie viele Wünsche seit `since` bei den ANDEREN dazukamen: [(Name, Anzahl)] – eigene Liste (und damit
+        auch Geheimtipps über die Person) zählen nicht."""
+        rows = self._db.all(
+            """SELECT p.name, COUNT(*) AS n FROM wishes w JOIN persons p ON p.id = w.person_id
+               WHERE w.person_id <> ? AND w.created_at > ? AND w.deleted_at IS NULL
+               GROUP BY p.id ORDER BY n DESC, p.name""", (person_id, since))
+        return [(r["name"], r["n"]) for r in rows]
+
     def reserved_by(self, person_id: int) -> list[Wish]:
         """Was jemand besorgt – auch inzwischen entfernte Wünsche (für den Hinweis)."""
         return [_wish(r) for r in self._db.all(

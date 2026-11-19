@@ -49,7 +49,15 @@ class ApiKeyExpiring:
     expires_at: int
 
 
-Notification = WishRemoved | NewRegistration | AdminMessage | ApiKeyIssued | ApiKeyExpiring
+@dataclass(frozen=True)
+class ComeBackReminder:
+    """Jemand war über einen Monat nicht da – freundlicher Hinweis, was sich seitdem getan hat."""
+    recipient_email: str
+    recipient_name: str
+    new_wishes: tuple[tuple[str, int], ...]   # (Name, Anzahl neuer Wünsche) seit dem letzten Besuch
+
+
+Notification = WishRemoved | NewRegistration | AdminMessage | ApiKeyIssued | ApiKeyExpiring | ComeBackReminder
 
 
 class Notifier(Protocol):

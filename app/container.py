@@ -13,7 +13,7 @@ from .config import Settings
 from .domain.notifications import Notifier
 from .mail import BackgroundMailNotifier, ConsoleTransport, Mailer, MailTransport, SmtpTransport
 from .services import (AdminContact, AdminPolicy, ApiKeyService, EmailDirectory, FamilyService, InvitationService, LoginCodeService,
-                       MailRateLimiter, Guardianship, PersonRemovalService, PersonResolver, RelationService, RemovalNotices,
+                       MailRateLimiter, Guardianship, PersonRemovalService, PersonResolver, Presence, RelationService, RemovalNotices,
                        SessionService, WishService)
 from .storage import (ApiKeyRepository, ChatRepository, Database, InviteRepository, LoginCodeRepository, MailLog, PersonRepository,
                       RelationRepository, SessionRepository, WishRepository)
@@ -51,13 +51,15 @@ class Container:
         self.wishes = WishService(db, resolver, wishes, notices, Guardianship(persons, relations))
         self.login_codes = LoginCodeService(db, persons, codes, mail_limit, emails, self.notifier,
                                             settings.family_code)
-        self.sessions = SessionService(sessions)
+        self.presence = Presence(persons, wishes, self.notifier)
+        self.sessions = SessionService(sessions, self.presence)
         self.invitations = InvitationService(db, persons, invites, mail_limit, emails, self.notifier)
         self.removals = PersonRemovalService(db, persons, wishes, invites, codes, mail_log, sessions,
                                              self.chat_history, relations, api_keys, notices)
 
         self.admin_contact = AdminContact(self.admins, mail_limit, self.notifier)
-        self.api_keys = ApiKeyService(api_keys, mail_limit, self.notifier, settings.api_key_days)
+        self.api_keys = ApiKeyService(api_keys, mail_limit, self.notifier, settings.api_key_days,
+                                      self.presence)
 
         self.tools = ToolRegistry.standard(self.wishes, self.family, self.relations, self.admin_contact,
                                            self.api_keys)

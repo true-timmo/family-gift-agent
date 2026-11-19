@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+{% block body %}
+<p style="font-size:18px">Hallo {{ name }},</p>
+<p style="font-size:18px">du warst schon länger nicht mehr auf der <strong>Geschenke-Liste der Familie</strong>.</p>
+{% if new_wishes %}
+<p style="font-size:18px">Seit deinem letzten Besuch ist einiges dazugekommen:</p>
+<ul style="font-size:18px">
+{% for person, count in new_wishes %}
+<li><strong>{{ person }}</strong>: {{ count }} neue{{ "r Wunsch" if count == 1 else " Wünsche" }}</li>
+{% endfor %}
+</ul>
+{% endif %}
+<p style="font-size:18px">Schau doch mal wieder vorbei – und pflege bei der Gelegenheit gern auch deine eigene Wunschliste.</p>
+<p style="margin:28px 0"><a href="{{ app_url }}" style="display:inline-block;background:#b4432f;color:#fff;
+text-decoration:none;font-size:20px;font-weight:600;padding:14px 28px;border-radius:12px">Zur Geschenke-Liste</a></p>
+<p style="color:#7a716a;font-size:14px">Diese Erinnerung kommt höchstens einmal im Monat und nur, solange du nicht vorbeischaust.</p>
+{% endblock %}

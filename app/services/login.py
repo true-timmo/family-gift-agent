@@ -6,6 +6,7 @@ from ..storage import Database, LoginCodeRepository, PersonRepository, SessionRe
 from ..storage.database import DAY, now
 from ..storage.logins import LoginCode
 from .directory import EmailDirectory, MailRateLimiter
+from .presence import Presence
 from .security import hash_code, hash_token, new_code, new_token, same_secret
 
 
@@ -93,16 +94,21 @@ class LoginCodeService:
 class SessionService:
     VALID_DAYS = 90
 
-    def __init__(self, sessions: SessionRepository):
+    def __init__(self, sessions: SessionRepository, presence: Presence):
         self._sessions = sessions
+        self._presence = presence
 
     def start(self, person: Person) -> str:
+        self._presence.seen(person)
         token = new_token()
         self._sessions.add(hash_token(token), person.id, now() + self.VALID_DAYS * DAY)
         return token
 
     def person(self, token: str | None) -> Person | None:
-        return self._sessions.person(hash_token(token)) if token else None
+        person = self._sessions.person(hash_token(token)) if token else None
+        if person:
+            self._presence.seen(person)
+        return person
 
     def end(self, token: str) -> None:
         self._sessions.delete(hash_token(token))

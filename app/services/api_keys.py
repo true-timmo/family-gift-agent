@@ -11,6 +11,7 @@ from ..domain.values import masked_email
 from ..storage import ApiKeyRepository
 from ..storage.database import DAY, now
 from .directory import MailRateLimiter
+from .presence import Presence
 from .security import hash_token, new_token
 
 KEY_PREFIX = "gsk_"
@@ -26,8 +27,10 @@ class ApiKeyService:
     MAX_VALID = 5       # je Person, z.B. für mehrere Geräte/Programme
     REMIND_DAYS = 3     # so viele Tage vor Ablauf kommt eine Erinnerung
 
-    def __init__(self, keys: ApiKeyRepository, mail_limit: MailRateLimiter, notifier: Notifier, valid_days: int):
+    def __init__(self, keys: ApiKeyRepository, mail_limit: MailRateLimiter, notifier: Notifier, valid_days: int,
+                 presence: Presence):
         self._keys = keys
+        self._presence = presence
         self._mail_limit = mail_limit
         self._notifier = notifier
         self._valid_days = valid_days
@@ -53,6 +56,7 @@ class ApiKeyService:
         token_hash = hash_token(key)
         if person := self._keys.person(token_hash):
             self._keys.touch(token_hash)
+            self._presence.seen(person)
         return person
 
     def revoke_all(self, person: Person) -> int:

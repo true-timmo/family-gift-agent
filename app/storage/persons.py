@@ -1,4 +1,5 @@
 import sqlite3
+from dataclasses import dataclass
 
 from ..domain.errors import NotFoundError
 from ..domain.models import FamilyMember, MemberStatus, Person
@@ -7,6 +8,12 @@ from .database import Database, now
 
 def person_from_row(row: sqlite3.Row | None) -> Person | None:
     return Person(row["id"], row["name"], row["email"], row["gender"]) if row else None
+
+
+@dataclass(frozen=True)
+class AbsentPerson:
+    person: Person
+    last_seen_at: int
 
 
 class PersonRepository:
@@ -55,6 +62,22 @@ class PersonRepository:
 
     def set_gender(self, person_id: int, gender: str) -> None:
         self._db.execute("UPDATE persons SET gender = ? WHERE id = ?", (gender, person_id))
+
+    def mark_seen(self, person_id: int, at: int, unless_since: int) -> None:
+        """Merkt sich den Besuch – schreibt aber nur, wenn der letzte vor `unless_since` lag."""
+        self._db.execute("UPDATE persons SET last_seen_at = ? WHERE id = ? AND COALESCE(last_seen_at, 0) < ?",
+                         (at, person_id, unless_since))
+
+    def absent(self, since: int) -> list[AbsentPerson]:
+        """Personen mit Login, die seit `since` nicht da waren und seitdem auch keine Erinnerung bekamen."""
+        rows = self._db.all(
+            """SELECT *, COALESCE(last_seen_at, created_at) AS seen FROM persons
+               WHERE email IS NOT NULL AND COALESCE(last_seen_at, created_at) <= ?
+                 AND COALESCE(nudged_at, 0) <= ? ORDER BY name""", (since, since))
+        return [AbsentPerson(person_from_row(r), r["seen"]) for r in rows]
+
+    def mark_nudged(self, person_id: int, at: int) -> None:
+        self._db.execute("UPDATE persons SET nudged_at = ? WHERE id = ?", (at, person_id))
 
     def delete(self, person_id: int) -> None:
         self._db.execute("DELETE FROM persons WHERE id = ?", (person_id,))

@@ -115,7 +115,14 @@ class Database:
         ("persons", "gender", "TEXT"),                          # "w" / "m" / NULL
         ("wishes", "secret", "INTEGER NOT NULL DEFAULT 0"),    # 1 = Geheimtipp, die Person selbst sieht ihn nie
         ("api_keys", "reminded_at", "INTEGER"),                 # Erinnerung vor Ablauf verschickt
+        ("persons", "last_seen_at", "INTEGER"),                 # zuletzt in der App oder per KI-Zugang aktiv
+        ("persons", "nudged_at", "INTEGER"),                    # letzte „Schau mal wieder vorbei“-Mail
     )
+    # Füllt neue Spalten in bestehenden Datenbanken sinnvoll vor
+    _BACKFILL = {
+        # Wer schon da ist, gilt ab jetzt als gesehen – sonst bekämen beim ersten Start alle eine Erinnerung
+        ("persons", "last_seen_at"): "UPDATE persons SET last_seen_at = CAST(strftime('%s','now') AS INTEGER)",
+    }
 
     def _migrate(self) -> None:
         """Ergänzt Spalten, die es in älteren Datenbanken noch nicht gibt."""
@@ -123,6 +130,8 @@ class Database:
             columns = {row["name"] for row in self._conn.execute(f"PRAGMA table_info({table})")}
             if column not in columns:
                 self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+                if backfill := self._BACKFILL.get((table, column)):
+                    self._conn.execute(backfill)
 
     def execute(self, sql: str, params: tuple = ()) -> sqlite3.Cursor:
         return self._conn.execute(sql, params)

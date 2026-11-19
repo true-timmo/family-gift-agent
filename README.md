@@ -15,6 +15,8 @@ fragen nach den Wünschen anderer („Was wünscht sich Mama?“) und reserviere
 - **Geheimtipps**: Wünsche, die jemand nur nebenbei erwähnt hat, merkt sich die Familie für ihn – er selbst sieht
   sie nie, alle anderen sehen, wer den Tipp gegeben hat
 - **Benachrichtigung per Mail**, wenn ein bereits reservierter Wunsch entfernt wird
+- **Erinnerung per Mail**, wer über einen Monat nicht da war (App oder eigene KI) – höchstens einmal im Monat,
+  nur tagsüber, mit der Zahl neuer Wünsche seit dem letzten Besuch
 - **Einladungen per Mail**: Name und Adresse legt der Einladende fest, ein Klick auf den Link genügt
 - **Anmeldung per Einmal-Code (OTP)** per Mail, keine Passwörter; Familien-Code als optionaler Ausweg
 - **Familienübersicht** mit Status (registriert / eingeladen / noch nicht dabei), Info-Mail bei Neuregistrierung
