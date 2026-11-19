@@ -21,7 +21,7 @@ export interface Me {
 }
 
 export type LoginStep =
-  | { step: "code"; email: string }
+  | { step: "code"; name: string; email: string; gueltig_bis: number; schon_verschickt: boolean }
   | { step: "invited"; name: string; email: string }
   | { step: "register"; name: string };
 
@@ -64,11 +64,13 @@ export class Api {
   }
 
   // --- Anmeldung ---
-  loginStart(name: string) { return this.post<LoginStep>(`${LOGIN_PATH}/start`, { name }); }
+  loginStart(name: string, resend = false) { return this.post<LoginStep>(`${LOGIN_PATH}/start`, { name, resend }); }
   register(name: string, email: string, family_code: string) {
     return this.post<LoginStep>(`${LOGIN_PATH}/register`, { name, email, family_code });
   }
   verify(name: string, code: string) { return this.post<{ name: string }>(`${LOGIN_PATH}/verify`, { name, code }); }
+  loginLinkInfo(token: string) { return this.post<{ name: string }>(`${LOGIN_PATH}/link`, { token }); }
+  acceptLoginLink(token: string) { return this.post<{ name: string }>(`${LOGIN_PATH}/link/accept`, { token }); }
   inviteInfo(token: string) { return this.post<InviteInfo>(`${LOGIN_PATH}/invite`, { token }); }
   acceptInvite(token: string) { return this.post<{ name: string }>(`${LOGIN_PATH}/invite/accept`, { token }); }
   resendInvite(name: string) { return this.post<{ email: string }>(`${LOGIN_PATH}/invite/resend`, { name }); }

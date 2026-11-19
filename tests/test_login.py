@@ -12,7 +12,7 @@ def wrong(code):
 
 def test_code_login_bekannte_person(fam):
     codes = fam.c.login_codes
-    code = codes.issue("Mama", "mama@example.de", register=False)
+    code = codes.issue("Mama", "mama@example.de", register=False).code
     assert len(code) == 6 and code.isdigit()
     with pytest.raises(AuthenticationError, match="Noch 4"):
         codes.verify("Mama", wrong(code))
@@ -23,7 +23,7 @@ def test_code_login_bekannte_person(fam):
 
 def test_code_nach_5_fehlversuchen_gesperrt(fam):
     codes = fam.c.login_codes
-    code = codes.issue("Papa", "papa@example.de", register=False)
+    code = codes.issue("Papa", "papa@example.de", register=False).code
     for _ in range(5):
         with pytest.raises(AuthenticationError):
             codes.verify("Papa", wrong(code))
@@ -32,7 +32,7 @@ def test_code_nach_5_fehlversuchen_gesperrt(fam):
 
 
 def test_abgelaufener_code(fam):
-    code = fam.c.login_codes.issue("Lena", "lena@example.de", register=False)
+    code = fam.c.login_codes.issue("Lena", "lena@example.de", register=False).code
     fam.db.execute("UPDATE otp_codes SET expires_at = 0")
     with pytest.raises(AuthenticationError, match="abgelaufen"):
         fam.c.login_codes.verify("Lena", code)
@@ -45,7 +45,7 @@ def test_versandlimit(fam):
 
 
 def test_registrierung_legt_person_erst_nach_code_an(fam):
-    code = fam.c.login_codes.issue("Tante Uschi", "uschi@example.de", register=True)
+    code = fam.c.login_codes.issue("Tante Uschi", "uschi@example.de", register=True).code
     assert fam.person("Tante Uschi") is None                             # vor Bestätigung: noch nichts
     p = fam.c.login_codes.verify("tante uschi", code)                    # klein getippt beim Code
     assert (p.name, p.email) == ("Tante Uschi", "uschi@example.de")
@@ -54,14 +54,14 @@ def test_registrierung_legt_person_erst_nach_code_an(fam):
 
 def test_registrierung_uebernimmt_person_ohne_login(fam):
     fam.add_wish("Mama", "Oma", "Wolldecke")
-    code = fam.c.login_codes.issue("Oma", "oma@example.de", register=True)
+    code = fam.c.login_codes.issue("Oma", "oma@example.de", register=True).code
     oma = fam.c.login_codes.verify("Oma", code)
     assert oma.id == fam.ids["Oma"] and oma.email == "oma@example.de"
     assert fam.titles("Mama", "Oma") == ["Wolldecke"]
 
 
 def test_registrierung_kann_bestehenden_login_nicht_kapern(fam):
-    code = fam.c.login_codes.issue("Oma", "fremder@example.de", register=True)
+    code = fam.c.login_codes.issue("Oma", "fremder@example.de", register=True).code
     fam.c.family.set_email("Oma", "oma@example.de")                      # Oma war schneller
     with pytest.raises(ConflictError, match="jemand anderes"):
         fam.c.login_codes.verify("Oma", code)
@@ -69,7 +69,7 @@ def test_registrierung_kann_bestehenden_login_nicht_kapern(fam):
 
 
 def test_registrierung_mit_vergebener_mail_scheitert(fam):
-    code = fam.c.login_codes.issue("Tante Uschi", "lena@example.de", register=True)
+    code = fam.c.login_codes.issue("Tante Uschi", "lena@example.de", register=True).code
     with pytest.raises(ConflictError, match="schon verwendet"):
         fam.c.login_codes.verify("Tante Uschi", code)
     assert fam.person("Tante Uschi") is None
@@ -97,3 +97,35 @@ def test_session(fam):
     assert sessions.person("falsch") is None
     sessions.end(token)
     assert sessions.person(token) is None
+
+
+# --- Anmelde-Knopf in der Mail ----------------------------------------------------------
+
+def test_anmelde_link_meldet_einmal_an(fam):
+    codes = fam.c.login_codes
+    issued = codes.issue("Mama", "mama@example.de", register=False)
+    assert codes.link_owner(issued.link_token) == "Mama"           # nur anzeigen, noch nicht verbraucht
+    assert codes.link_owner(issued.link_token) == "Mama"
+    assert codes.verify_link(issued.link_token).name == "Mama"
+    assert codes.link_owner(issued.link_token) is None
+    with pytest.raises(AuthenticationError, match="abgelaufen"):
+        codes.verify_link(issued.link_token)
+    with pytest.raises(AuthenticationError):                       # Code ist damit auch verbraucht
+        codes.verify("Mama", issued.code)
+
+
+def test_anmelde_link_abgelaufen_ersetzt_oder_falsch(fam):
+    codes = fam.c.login_codes
+    first = codes.issue("Lena", "lena@example.de", register=False)
+    fam.reset_mail_limit()
+    second = codes.issue("Lena", "lena@example.de", register=False)
+    assert codes.link_owner(first.link_token) is None               # neuer Code ersetzt den alten Link
+    assert codes.link_owner("quatsch") is None and codes.link_owner("") is None
+    fam.db.execute("UPDATE otp_codes SET expires_at = 0")
+    assert codes.link_owner(second.link_token) is None
+
+
+def test_anmelde_link_schliesst_registrierung_ab(fam):
+    issued = fam.c.login_codes.issue("Tante Uschi", "uschi@example.de", register=True)
+    assert fam.c.login_codes.verify_link(issued.link_token).email == "uschi@example.de"
+    assert isinstance(fam.notifier.sent[-1], NewRegistration)

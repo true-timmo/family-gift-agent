@@ -1,4 +1,6 @@
 """Web-API: Fehlerbehandlung, Anmeldung per Einladung, Rechte."""
+import time
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -36,7 +38,8 @@ def test_ungueltiger_name_ist_400(client):
 def test_login_start_schritte(fam, client):
     assert post(client, "/api/login/start", name="Oma").json() == {"step": "register", "name": "Oma"}
     r = post(client, "/api/login/start", name="mama").json()
-    assert r == {"step": "code", "email": "m***@example.de"}
+    assert r["step"] == "code" and r["name"] == "Mama" and r["email"] == "m***@example.de"
+    assert not r["schon_verschickt"] and r["gueltig_bis"] > time.time() + 9 * 60
     assert fam.mails.messages[-1]["To"] == "mama@example.de"
 
 
@@ -89,3 +92,39 @@ def test_einladen_nur_admin(fam, client):
     sign_in(fam, client, "Mama")
     assert post(client, "/api/einladung", name="Oma", email="oma@example.de").json() == \
         {"name": "Oma", "email": "oma@example.de"}
+
+
+def test_gueltiger_code_wird_nicht_ersetzt(fam, client):
+    """Fenster zu, Name nochmal eingegeben: der Code aus der ersten Mail gilt weiter."""
+    first = post(client, "/api/login/start", name="Papa").json()
+    code = next(w for w in fam.mails.last_text().split() if w.isdigit() and len(w) == 6)
+    again = post(client, "/api/login/start", name="papa").json()
+    assert again["schon_verschickt"] and again["gueltig_bis"] == first["gueltig_bis"] and len(fam.mails.messages) == 1
+    assert post(client, "/api/login/verify", name="Papa", code=code).json() == {"name": "Papa"}
+
+
+def test_neuer_code_auf_wunsch(fam, client):
+    post(client, "/api/login/start", name="Papa")
+    fam.reset_mail_limit()
+    r = post(client, "/api/login/start", name="Papa", resend=True).json()
+    assert r["step"] == "code" and not r["schon_verschickt"] and len(fam.mails.messages) == 2
+
+
+def test_abgelaufener_code_wird_neu_verschickt(fam, client):
+    post(client, "/api/login/start", name="Papa")
+    fam.db.execute("UPDATE otp_codes SET expires_at = 0")
+    fam.reset_mail_limit()
+    assert not post(client, "/api/login/start", name="Papa").json()["schon_verschickt"]
+    assert len(fam.mails.messages) == 2
+
+
+def test_anmelde_knopf_in_der_mail(fam, client):
+    post(client, "/api/login/start", name="Lena")
+    text = fam.mails.last_text()
+    token = text.split("?anmelden=")[1].split()[0]
+    assert "anmelden=" in fam.mails.messages[-1].get_body(("html",)).get_content()
+    assert post(client, "/api/login/link", token=token).json() == {"name": "Lena"}    # Vorschau, kein Login
+    assert client.get("/api/me").status_code == 401
+    assert post(client, "/api/login/link/accept", token=token).json() == {"name": "Lena"}
+    assert client.get("/api/me").json()["name"] == "Lena"
+    assert post(client, "/api/login/link", token=token).status_code == 404

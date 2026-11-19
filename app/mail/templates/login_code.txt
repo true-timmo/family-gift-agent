@@ -2,11 +2,14 @@
 {% block body %}
 Hallo {{ name }},
 
-dein Anmeldecode lautet:
+Zum Anmelden tippe auf diesen Link:
+{{ link }}
+
+Oder gib diesen Code ein:
 
     {{ code }}
 
-Er ist {{ minutes }} Minuten gültig.
+Link und Code sind {{ minutes }} Minuten gültig und funktionieren nur einmal.
 
 Dein Name zum Anmelden: {{ name }}
 

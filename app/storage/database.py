@@ -112,7 +112,8 @@ class Database:
 
     # Spalten, die nach dem ersten Start dazukamen: (Tabelle, Spalte, Definition)
     _ADDED_COLUMNS = (
-        ("persons", "gender", "TEXT"),                          # "w" / "m" / NULL
+        ("persons", "gender", "TEXT"),
+        ("otp_codes", "link_hash", "TEXT"),                     # Anmelde-Knopf in der Mail (statt Code abtippen)                          # "w" / "m" / NULL
         ("wishes", "secret", "INTEGER NOT NULL DEFAULT 0"),    # 1 = Geheimtipp, die Person selbst sieht ihn nie
         ("api_keys", "reminded_at", "INTEGER"),                 # Erinnerung vor Ablauf verschickt
     )

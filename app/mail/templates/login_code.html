@@ -1,9 +1,11 @@
 {% extends "layout.html" %}
 {% block body %}
 <p>Hallo {{ name }},</p>
-<p>dein Anmeldecode lautet:</p>
+<p style="margin:24px 0"><a href="{{ link }}" style="display:inline-block;background:#b4432f;color:#fff;
+text-decoration:none;font-size:20px;font-weight:600;padding:14px 28px;border-radius:12px">Jetzt anmelden</a></p>
+<p>Oder gib diesen Code ein:</p>
 <p style="font-size:32px;letter-spacing:6px;font-weight:600;margin:16px 0">{{ code }}</p>
-<p>Er ist {{ minutes }} Minuten gültig.</p>
+<p>Knopf und Code sind {{ minutes }} Minuten gültig und funktionieren nur einmal.</p>
 <p>Dein Name zum Anmelden: <strong>{{ name }}</strong></p>
 <p style="color:#7a716a">Falls du dich nicht angemeldet hast, kannst du diese Mail einfach ignorieren.</p>
 {% endblock %}
