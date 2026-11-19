@@ -7,7 +7,7 @@ export type Step =
   | { name: "link"; person: string } // Knopf aus der Anmelde-Mail geöffnet
   | { name: "invited"; person: string; email: string } // Einladung liegt im Postfach
   | { name: "register"; person: string } // erstes Mal, ohne Einladung
-  | { name: "code"; email: string; validUntil: number; alreadySent: boolean };
+  | { name: "code"; email: string; validUntil: number; alreadySent: boolean; resendAt: number };
 
 export interface LoginState {
   step: Step;
@@ -30,7 +30,22 @@ export interface LoginHandlers {
 const clock = (unixSeconds: number) =>
   new Date(unixSeconds * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 
+/** Restwartezeit bis zum nächsten erlaubten Versand, z.B. „in 42 s“ – leer, wenn es sofort geht. */
+export function waitLabel(resendAt: number, now = Date.now() / 1000): string {
+  const wait = Math.ceil(resendAt - now);
+  if (wait <= 0) return "";
+  return wait < 90 ? `in ${wait} s` : `in ${Math.ceil(wait / 60)} Min.`;
+}
+
 const submit = (label: string, busy: boolean) => html`<button type="submit" ?disabled=${busy}>${label}</button>`;
+
+function resendButton(resendAt: number, busy: boolean, h: LoginHandlers): TemplateResult {
+  const wait = waitLabel(resendAt);
+  return html`
+    <p class="login-hint">Keine Mail bekommen? Schau auch im Spam-Ordner nach.</p>
+    <button type="button" class="link" ?disabled=${busy || wait !== ""} @click=${h.resendCode}>
+      Neuen Code schicken${wait ? ` (${wait})` : ""}</button>`;
+}
 
 function step(s: LoginState, h: LoginHandlers): TemplateResult {
   switch (s.step.name) {
@@ -80,13 +95,13 @@ function step(s: LoginState, h: LoginHandlers): TemplateResult {
           <input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7"
             required></label>
         ${submit("Anmelden", s.busy)}
-        <button type="button" class="link" ?disabled=${s.busy} @click=${h.resendCode}>Neuen Code schicken</button>
+        ${resendButton(s.step.resendAt, s.busy, h)}
       </form>`;
   }
 }
 
 export const loginTemplate = (s: LoginState, h: LoginHandlers): TemplateResult => html`
   ${step(s, h)}
-  <p class="error" role="alert">${s.feedback?.text ?? ""}</p>
+  <p class="error ${s.feedback?.kind === "ok" ? "ok" : ""}" role="alert">${s.feedback?.text ?? ""}</p>
   ${s.step.name === "name" || s.step.name === "invite" || s.step.name === "link" ? nothing
     : html`<button type="button" class="link" @click=${h.back}>← Anderer Name</button>`}`;

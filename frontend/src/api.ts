@@ -21,7 +21,8 @@ export interface Me {
 }
 
 export type LoginStep =
-  | { step: "code"; name: string; email: string; gueltig_bis: number; schon_verschickt: boolean }
+  | { step: "code"; name: string; email: string; gueltig_bis: number; schon_verschickt: boolean;
+      neuer_code_ab: number }
   | { step: "invited"; name: string; email: string }
   | { step: "register"; name: string };
 

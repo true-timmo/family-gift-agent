@@ -13,6 +13,7 @@ export class LoginView extends FormView<LoginState> {
   private inviteToken: string | null = null;
   private loginToken: string | null = null;
   private readonly pending = new PendingLoginStore();
+  private countdown: ReturnType<typeof setInterval> | undefined;
 
   constructor(root: HTMLElement, api: Api, onSignedIn: () => void) {
     super(root, { step: { name: "name" }, loginName: "", busy: false, feedback: null });
@@ -25,7 +26,8 @@ export class LoginView extends FormView<LoginState> {
     const pending = this.pending.load();
     if (!pending) return this.goTo({ name: "name" });
     this.update({ loginName: pending.name });
-    this.goTo({ name: "code", email: pending.email, validUntil: pending.validUntil, alreadySent: true });
+    this.goTo({ name: "code", email: pending.email, validUntil: pending.validUntil, alreadySent: true,
+                resendAt: pending.resendAt ?? 0 });
   }
 
   /** Einladungslink (#einladung=…): erst zeigen, wer eingeladen ist – angenommen wird per Knopfdruck. */
@@ -54,6 +56,18 @@ export class LoginView extends FormView<LoginState> {
   private goTo(step: Step, clearFeedback = true): void {
     this.update(clearFeedback ? { step, feedback: null } : { step });
     focus(this.root);
+    this.runCountdown();
+  }
+
+  /** Zählt die Wartezeit bis „Neuen Code schicken“ sichtbar herunter. */
+  private runCountdown(): void {
+    clearInterval(this.countdown);
+    const waiting = () => this.state.step.name === "code" && this.state.step.resendAt > Date.now() / 1000;
+    if (!waiting()) return;
+    this.countdown = setInterval(() => {
+      this.update({});
+      if (!waiting()) clearInterval(this.countdown);
+    }, 1000);
   }
 
   /** Antwort des Servers → nächster Schritt. */
@@ -61,9 +75,10 @@ export class LoginView extends FormView<LoginState> {
     if (res && "name" in res) this.update({ loginName: res.name }); // Schreibweise vom Server
     switch (res?.step) {
       case "code":
-        this.pending.save({ name: res.name, email: res.email, validUntil: res.gueltig_bis });
+        this.pending.save({ name: res.name, email: res.email, validUntil: res.gueltig_bis,
+                            resendAt: res.neuer_code_ab });
         return this.goTo({ name: "code", email: res.email, validUntil: res.gueltig_bis,
-                           alreadySent: res.schon_verschickt });
+                           alreadySent: res.schon_verschickt, resendAt: res.neuer_code_ab });
       case "invited": return this.goTo({ name: "invited", person: res.name, email: res.email });
       case "register": return this.goTo({ name: "register", person: res.name });
     }
@@ -101,7 +116,7 @@ export class LoginView extends FormView<LoginState> {
     resendCode: async () => {
       const res = await this.requestCode(true);
       this.follow(res);
-      if (res?.step === "code") this.say("ok", "Neuer Code ist unterwegs.");
+      if (res?.step === "code") this.say("ok", "Neue Mail ist unterwegs – nimm den Code aus der neuesten Mail.");
     },
     resendInvite: async (e) => {
       e.preventDefault();

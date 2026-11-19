@@ -108,6 +108,7 @@ def test_neuer_code_auf_wunsch(fam, client):
     fam.reset_mail_limit()
     r = post(client, "/api/login/start", name="Papa", resend=True).json()
     assert r["step"] == "code" and not r["schon_verschickt"] and len(fam.mails.messages) == 2
+    assert r["neuer_code_ab"] > time.time() + 50                     # Knopf zählt bis dahin herunter
 
 
 def test_abgelaufener_code_wird_neu_verschickt(fam, client):

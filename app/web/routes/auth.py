@@ -26,16 +26,16 @@ router = APIRouter(prefix="/api")
 login = APIRouter(prefix="/api/login", dependencies=[Depends(require_json), Depends(login_attempts)])
 
 
-def _code_step(name: str, email: str, valid_until: int, already_sent: bool = False) -> dict:
+def _code_step(c: Container, name: str, email: str, valid_until: int, already_sent: bool = False) -> dict:
     return {"step": "code", "name": name, "email": masked_email(email), "gueltig_bis": valid_until,
-            "schon_verschickt": already_sent}
+            "schon_verschickt": already_sent, "neuer_code_ab": c.login_codes.resend_allowed_at(name)}
 
 
 async def _send_code(c: Container, name: str, email: str, register: bool) -> dict:
     issued = c.login_codes.issue(name, email, register)
     async with mail_delivery("Die Mail", email):
         await c.mailer.send_login_code(email, name, issued.code, c.login_codes.VALID_MINUTES, issued.link_token)
-    return _code_step(name, email, issued.expires_at)
+    return _code_step(c, name, email, issued.expires_at)
 
 
 def _sign_in(c: Container, cookie: SessionCookie, response: Response, person: Person) -> dict:
@@ -51,7 +51,7 @@ async def start(data: LoginStartIn, c: Container = Depends(container)):
         # Code aus einer früheren Mail gilt noch (z.B. Fenster zwischendurch geschlossen) → keinen neuen schicken,
         # sonst wäre der in der Mail ungültig. Einen neuen gibt es nur auf ausdrücklichen Wunsch.
         if not data.resend and (until := c.login_codes.valid_until(person.name, person.email)):
-            return _code_step(person.name, person.email, until, already_sent=True)
+            return _code_step(c, person.name, person.email, until, already_sent=True)
         return await _send_code(c, person.name, person.email, register=False)
     if invite := c.invitations.pending_for(name):
         return {"step": "invited", "name": invite.name, "email": masked_email(invite.email)}
